@@ -9,8 +9,12 @@
         col = typeof col === 'object' ? col : [].slice.call(arguments, 1);
 
         return str.replace(/\{\{|\}\}|\{(\w+)\}/g, function (m, n) {
-            if (m == '{{') { return '{'; }
-            if (m == '}}') { return '}'; }
+            if (m == '{{') {
+                return '{';
+            }
+            if (m == '}}') {
+                return '}';
+            }
             return col[n];
         });
     };
@@ -21,7 +25,7 @@ var util = {
     // 節流閥 (執行函式, 必執行(毫秒), 延遲執行(毫秒))
     throttle: function (func, mustRun, delay) {
         mustRun = mustRun || 150;
-        delay = (delay === 0 || !!delay) ? delay : 100;
+        delay = delay === 0 || !!delay ? delay : 100;
         var timeoutId = null,
             lastTime = 0;
 
@@ -88,13 +92,16 @@ var util = {
     piper: function (/* functions */) {
         var fs = [].slice.apply(arguments);
         return function (/* arguments */) {
-            return fs.reduce(function (args, f) {
-                return [f.apply(this, args)];
-            }.bind(this), [].slice.apply(arguments))[0];
+            return fs.reduce(
+                function (args, f) {
+                    return [f.apply(this, args)];
+                }.bind(this),
+                [].slice.apply(arguments)
+            )[0];
         }.bind(this);
     },
     deepCopy: function (obj) {
-        if (!obj || typeof obj !== "object") {
+        if (!obj || typeof obj !== 'object') {
             return obj;
         }
         if (obj instanceof Date) {
@@ -117,10 +124,8 @@ var util = {
         var p = {};
         for (var k in seed) {
             var v = seed[k];
-            if (v instanceof Array)
-                p[(seed[k] = v[0])] = { value: v[0], name: v[1], code: v[2] };
-            else
-                p[v] = { value: v, name: k.toLowerCase(), code: k.substring(0, 1) };
+            if (v instanceof Array) p[(seed[k] = v[0])] = { value: v[0], name: v[1], code: v[2] };
+            else p[v] = { value: v, name: k.toLowerCase(), code: k.substring(0, 1) };
         }
         seed.properties = p;
 
@@ -133,7 +138,7 @@ util.array = {
     limit: function (arr, count) {
         return arr.slice(0, count);
     },
-}
+};
 
 // 物件相關
 util.obj = {
@@ -141,20 +146,22 @@ util.obj = {
         return obj.find(function (item) {
             return item[key] === value;
         });
-    }
-}
+    },
+};
 
 // 轉換相關
 util.convert = {
     obj2QueryString: function (params) {
         if (!params) return '';
 
-        return Object.keys(params).map(function (key) {
-            return '{key}={value}'.format({
-                key: encodeURIComponent(key),
-                value: encodeURIComponent(params[key]).replace('/%20/g', '+')
-            });
-        }).join('&');
+        return Object.keys(params)
+            .map(function (key) {
+                return '{key}={value}'.format({
+                    key: encodeURIComponent(key),
+                    value: encodeURIComponent(params[key]).replace('/%20/g', '+'),
+                });
+            })
+            .join('&');
     },
     queryString2Obj: function (str) {
         if (!str) return {};
@@ -172,7 +179,7 @@ util.convert = {
             if (obj[key]) acc[obj[key]] = !acc[obj[key]] ? obj : Object.assign({}, acc[obj[key]], obj);
             return acc;
         }, {});
-    }
+    },
 };
 
 // 數學相關
@@ -188,15 +195,54 @@ util.math = {
     // 千位符
     intThusandth: function (val) {
         if (!val) return val;
-        return val.toString().replace(/(\d)(?=(\d{3})+(?:\.\d+)?$)/g, '$1,')
+        return val.toString().replace(/(\d)(?=(\d{3})+(?:\.\d+)?$)/g, '$1,');
     },
 };
+
+// 日期相關
+util.date = (function () {
+    var week = new Array('日', '一', '二', '三', '四', '五', '六');
+
+    function get(date) {
+        return date ? new Date(date) : new Date();
+    }
+
+    function checkZero(i) {
+        return i < 10 ? '0' + i : i;
+    }
+
+    function format(date) {
+        var _d = get(date);
+
+        var obj = {
+            yyyy: _d.getFullYear(),
+            mm: _d.getMonth() + 1,
+            dd: _d.getDate(),
+            hour: _d.getHours(),
+            minu: _d.getMinutes(),
+            day: week[_d.getDay()],
+        };
+
+        obj.ymd = '{yyyy}/{mm}/{dd}'.format({
+            yyyy: obj.yyyy,
+            mm: checkZero(obj.mm),
+            dd: checkZero(obj.dd),
+        });
+
+        return obj;
+    }
+
+    return {
+        get: get,
+        format: format,
+    };
+})();
 
 // 瀏覽器相關
 util.browser = (function () {
     function notSuppertIE() {
         var userAgent = window.navigator.userAgent;
-        var isIE = (userAgent.indexOf('MSIE') > 0) || (userAgent.indexOf('Trident/') > 0);
+        var isIE = userAgent.indexOf('MSIE') > 0 || userAgent.indexOf('Trident/') > 0;
         var isEdge = userAgent.indexOf('Edge/') > 0;
 
         if (isIE || isEdge) {
@@ -205,8 +251,8 @@ util.browser = (function () {
     }
 
     return {
-        notSuppertIE: notSuppertIE
-    }
+        notSuppertIE: notSuppertIE,
+    };
 })();
 
 // URL相關
@@ -222,27 +268,119 @@ util.url = (function () {
     }
 
     function redirectMemberLogin() {
-      // Do Something
-      window.location = '/memberLogin';
+        // Do Something
+        window.location = '/memberLogin';
     }
 
     return {
         getParams: getParams,
         removeHash: removeHash,
         redirectMemberLogin: redirectMemberLogin,
+    };
+})();
+
+// 處理控制相關
+util.processControl = (function () {
+    var set = {};
+
+    function get(name, prop) {
+        return new Promise(function (resolve, reject) {
+            if (!set[name]) {
+                set[name] = {
+                    count: 0,
+                    isProcessing: false,
+                };
+                if (prop) Object.assign(set[name], prop);
+            }
+
+            resolve(set[name]);
+        });
     }
+
+    function check(name, prop) {
+        return get(name, prop).then(function (obj) {
+            return {
+                canStart: canStart.bind(null, name),
+                done: done.bind(null, name),
+            };
+        });
+    }
+
+    function checkOnce(name) {
+        var prop = {
+            limit: 1,
+        };
+        return check(name, prop);
+    }
+
+    function canStart(name, callback) {
+        var obj = set[name];
+
+        var pass = !obj.isProcessing;
+
+        if (pass && obj.limit) {
+            pass = obj.count < obj.limit;
+        }
+
+        if (pass) {
+            obj.count++;
+            obj.isProcessing = true;
+
+            if (callback) callback();
+        }
+
+        return pass;
+    }
+
+    function done(name, callback) {
+        set[name].isProcessing = false;
+        if (callback) callback();
+    }
+
+    function leastLoading(ms) {
+        var pass = false;
+        setTimeout(function () {
+            pass = true;
+        }, ms || 500);
+
+        return function (callback) {
+            var timer = setInterval(function () {
+                if (pass) {
+                    clearInterval(timer);
+                    callback();
+                }
+            }, 100);
+        };
+    }
+
+    function showLog() {
+        console.table(set);
+    }
+
+    return {
+        showLog: showLog,
+        check: check,
+        checkOnce: checkOnce,
+        leastLoading: leastLoading,
+    };
 })();
 
 // AJAX
 util.ajax = (function () {
-    var newXHR = window.XMLHttpRequest && (window.location.protocol !== 'file:' || !window.ActiveXObject)
-        ? function () { return new XMLHttpRequest(); }
-        : function () {
-            try { return new ActiveXObject('Microsoft.XMLHTTP'); }
-            catch (e) { throw new Error('XMLHttpRequest not supported'); }
-        };
+    var newXHR =
+        window.XMLHttpRequest && (window.location.protocol !== 'file:' || !window.ActiveXObject)
+            ? function () {
+                  return new XMLHttpRequest();
+              }
+            : function () {
+                  try {
+                      return new ActiveXObject('Microsoft.XMLHTTP');
+                  } catch (e) {
+                      throw new Error('XMLHttpRequest not supported');
+                  }
+              };
 
-    var forceRefresh = util.url.getParams('Refresh') === '1'
+    var forceRefresh = util.url.getParams('Refresh') === '1';
 
     function _ajax(opts) {
         return new Promise(function (resolve, reject) {
@@ -311,21 +449,18 @@ util.ajax = (function () {
             params: params,
         };
 
-        var promise = _ajax(opts)
-            .then(function (data) {
-                var res;
-                try {
-                    res = JSON.parse(data);
-                } catch (e) {
-                    res = data;
-                }
-                return res;
-            });
+        var promise = _ajax(opts).then(function (data) {
+            var res;
+            try {
+                res = JSON.parse(data);
+            } catch (e) {
+                res = data;
+            }
+            return res;
+        });
 
         if (successFunc) {
-            return promise
-                .then(successFunc)
-                .catch(errorFunc || errorHandler());
+            return promise.then(successFunc).catch(errorFunc || errorHandler());
         }
 
         return promise;
@@ -335,10 +470,10 @@ util.ajax = (function () {
         '401': function () {
             util.modal.set['loginYet']();
         },
-        'other': function () {
+        other: function () {
             util.modal.set['systemBusy']();
         },
-    }
+    };
 
     // 錯誤處理
     function errorHandler(customError) {
@@ -354,7 +489,7 @@ util.ajax = (function () {
             } else {
                 httpError['other']();
             }
-        }
+        };
     }
 
     return {
@@ -376,6 +511,14 @@ util.dom = (function () {
             document.head.appendChild(styleSheet);
         }
         styleSheet.innerText += styles;
+    }
+
+    function loadStyleSheet(href) {
+        var stylesheet = document.createElement('link');
+        stylesheet.href = href;
+        stylesheet.rel = 'stylesheet';
+        stylesheet.type = 'text/css';
+        document.head.appendChild(stylesheet);
     }
 
     function loadScript(src, onLoadFunc) {
@@ -422,13 +565,14 @@ util.dom = (function () {
         };
     }
 
-    function regToggleFade(ele, defaultShow, opts) {
-        var opts = opts || {
-            ms: 300,
-            tf: 'ease',
-        }
+    function regToggleFade(ele, opts, defaultShow) {
+        var opts = opts || {};
+        opts.ms = opts.ms || 300;
+        opts.tf = opts.tf || 'ease';
+
         var fadeClass = 'x-fade-{ms}-{tf}'.format(opts);
         var hideClass = 'x-hide-{ms}-{tf}'.format(opts);
+        var activeClass = opts.activeClass || '';
 
         if (fadeClassSet.indexOf(fadeClass) === -1) {
             fadeClassSet.push(fadeClass);
@@ -440,7 +584,7 @@ util.dom = (function () {
             addStyleSheet(fadeStyles);
         }
 
-        ele.classList.add(fadeClass)
+        ele.classList.add(fadeClass);
 
         if (!defaultShow) {
             ele.style.display = 'none';
@@ -456,12 +600,15 @@ util.dom = (function () {
                     ele.style.display = '';
                     timeoutId = setTimeout(function () {
                         ele.classList.remove(hideClass);
+                        if (activeClass) ele.classList.add(activeClass);
                     }, 50);
                 } else {
                     ele.classList.remove(hideClass);
+                    if (activeClass) ele.classList.add(activeClass);
                 }
             } else {
                 ele.classList.add(hideClass);
+                if (activeClass) ele.classList.remove(activeClass);
                 timeoutId = setTimeout(function () {
                     timeoutId = null;
                     ele.style.display = 'none';
@@ -472,12 +619,13 @@ util.dom = (function () {
 
     return {
         addStyleSheet: addStyleSheet,
+        loadStyleSheet: loadStyleSheet,
         loadScript: loadScript,
         nodeScriptReplace: nodeScriptReplace,
         wrap: wrap,
         getOffset: getOffset,
         regToggleFade: regToggleFade,
-    }
+    };
 })();
 
 // 圖片相關
@@ -494,7 +642,7 @@ util.img = (function () {
 
     function onError(img) {
         img.onerror = null;
-        img.src = '/images/noPic.svg';
+        img.src = '/assets/images/nopic.jpg';
     }
 
     function onLoad(img) {
@@ -536,7 +684,7 @@ util.img = (function () {
         preload: preload,
         onError: onError,
         onLoad: onLoad,
-        addRadioStyle: addRadioStyle
+        addRadioStyle: addRadioStyle,
     };
 })();
 
@@ -560,7 +708,7 @@ util.anchor = (function () {
 
     // TODO: 設定初始數據
     function setSectionsData(el) {
-        setSections(el.id)
+        setSections(el.id);
     }
 
     // 區塊錨點處理
@@ -576,7 +724,7 @@ util.anchor = (function () {
             var eleTop;
             var eleBottom;
 
-            var el = document.getElementById(sectionID)
+            var el = document.getElementById(sectionID);
             //eleTop = util.dom.getOffset(el).top
             eleTop = el.offsetParent.offsetTop + el.offsetTop;
             if (fixedHeader) eleTop -= fixedHeader.clientHeight;
@@ -599,9 +747,9 @@ util.anchor = (function () {
         if (!ele) return;
 
         var anchor = ele.dataset.anchor || ele.getAttribute('href');
-        if (anchor === '#') return
+        if (anchor === '#') return;
 
-        scrollTo(anchor, duration, callback)
+        scrollTo(anchor, duration, callback);
     }
 
     function scrollTo(selector, duration, callback) {
@@ -648,6 +796,7 @@ util.modal = (function () {
     // 模態框樣式名
     var modalClasses = {
         backdrop: 'x-modal__backdrop',
+        backdrop_active: 'x-modal__backdrop--active',
         backdrop_error: 'x-modal__backdrop--error',
         block: 'x-modal__block',
         content: 'x-modal__content',
@@ -658,13 +807,15 @@ util.modal = (function () {
         btn: 'x-modal__btn',
         btn_confirm: 'x-modal__btn--confirm',
         btn_cancel: 'x-modal__btn--cancel',
-    }
+    };
 
     // 內容模板
     var contentTemplate = {
         base: function (title, content, classes) {
             title = title || '提示訊息';
-            classes = classes || {};
+            classes = classes || {
+                header: 'text-center',
+            };
             return [
                 "<div class='{1} {2}'><span>{0}</span></div>".format(title, modalClasses.contentHeader, classes.header || ''),
                 "<div class='{1} {2}'><span>{0}</span></div>".format(content, modalClasses.contentBody, classes.body || ''),
@@ -719,7 +870,7 @@ util.modal = (function () {
 
         // 記錄模態框
         modal[name] = Object.assign({}, modalTemplate, { target: wrap });
-        modal[name].switchActive = util.dom.regToggleFade(wrap);
+        modal[name].switchActive = util.dom.regToggleFade(wrap, { activeClass: modalClasses.backdrop_active });
 
         // 回呼函式
         if (callback) callback();
@@ -739,7 +890,7 @@ util.modal = (function () {
     // 加入關閉按鈕的監聽 (名稱, 函式)
     function addCloseHandler(name, func) {
         if (modal[name]) {
-            var oldFunc = modal[name].onClose || function () { };
+            var oldFunc = modal[name].onClose || function () {};
             if (typeof oldFunc !== 'function') {
                 modal[name].onClose = func;
             } else {
@@ -786,7 +937,7 @@ util.modal = (function () {
         if (html) {
             // 初始內容
             initContent(name, html, function () {
-                open(name)
+                open(name);
             });
         } else {
             switchActive(name, true);
@@ -798,24 +949,17 @@ util.modal = (function () {
         if (modal[name]) {
             open(name);
         } else if (msg) {
-            var classes = {
-                body: 'text-center',
-            };
-            initContent(name, contentTemplate['base'](title, msg, classes), function () {
+            initContent(name, contentTemplate['base'](title, msg), function () {
                 open(name);
             });
         }
-
     }
     // 打開錯誤模態框 (名稱, 標題, 訊息)
     function openError(name, title, msg) {
         if (modal[name]) {
             open(name);
         } else if (msg) {
-            var classes = {
-                body: 'text-center',
-            };
-            initContent(name, contentTemplate['base'](title, msg, classes), function () {
+            initContent(name, contentTemplate['base'](title, msg), function () {
                 modal[name].target.classList.add(modalClasses.backdrop_error);
                 open(name);
             });
@@ -873,17 +1017,23 @@ util.modal = (function () {
             var modalStyles = [
                 '.{backdrop}{z-index:1040;position:fixed;top:0;right:0;bottom:0;left:0;width:100%;height:100%;display:block;background-color:rgba(18,18,18,.5)}',
                 '.{backdrop_error}{z-index:1041}',
-                '.{block}{position:absolute;top:50%;left:50%;transform:translateX(-50%) translateY(-50%)}',
+                '.{backdrop_active}>.{block}{transform:translateX(-50%) translateY(-50%)}',
+                '.{block}{position:absolute;top:50%;left:50%;transform:translateX(-50%) translateY(-70%);transition:transform .5s ease}',
                 '.{closeBtn}{position:absolute;top:15px;right:15px;width:15px;height:15px;line-height:15px;text-align:center;font-size:24px;cursor:pointer}',
-                '.{content}{position:relative;background-clip:padding-box;border-radius:5px;border:none;background-color:#fff;overflow:hidden;outline:0}',
-                '.{contentHeader}{padding:15px 15px 10px;font-size:18px;font-weight:700;border-bottom:1px solid #999}',
-                '.{contentBody}{padding:15px;min-width:300px;max-width:90vw;min-height:70px;max-height:80vh;overflow:auto}',
-                '.{contentFooter}{padding:15px;display:flex;justify-content:flex-end;align-items:center}',
+                '.{content}{position:relative;background-clip:padding-box;border-radius:5px;border:none;background-color:#fff;box-shadow: 0 0px 20px #000;overflow:hidden;outline:0}',
+                '.{contentHeader}{padding:15px 15px 10px;border-bottom:1px solid #999}',
+                '.{contentHeader}>*{font-size:18px;font-weight:700;}',
+                '.{contentBody}{box-sizing:border-box;padding:15px;min-width:300px;max-width:90vw;min-height:70px;max-height:80vh;overflow:auto}',
+                '.{contentFooter}{padding:10px 15px 15px;display:flex;justify-content:flex-end;align-items:center}',
                 '.{btn}{padding:5px 10px;border-radius:3px;border:1px solid #999;cursor:pointer}',
                 '.{btn}:hover{background-color:#eee}',
                 '.{btn}+.{btn}{margin-left:10px}',
                 '.text-center{text-align:center}',
-            ].join('').format(modalClasses);
+                '.align-center{display:flex;align-items:center}',
+                '.flex-center{display:flex;align-items:center;justify-content:center}',
+            ]
+                .join('')
+                .format(modalClasses);
         }
         util.dom.addStyleSheet(modalStyles);
     })();
@@ -896,7 +1046,7 @@ util.modal = (function () {
         systemBusy: function () {
             openError('systemBusy', null, '系統忙碌中，請稍後再試！');
         },
-    }
+    };
 
     return {
         modalClasses: modalClasses,
@@ -952,9 +1102,11 @@ util.createAsyncFunction = function (fn) {
     }
     // Object.assign
     if (typeof Object.assign != 'function') {
-        Object.assign = function (target, varArgs) { // .length of function is 2
+        Object.assign = function (target, varArgs) {
+            // .length of function is 2
             'use strict';
-            if (target == null) { // TypeError if undefined or null
+            if (target == null) {
+                // TypeError if undefined or null
                 throw new TypeError('Cannot convert undefined or null to object');
             }
 
@@ -963,7 +1115,8 @@ util.createAsyncFunction = function (fn) {
             for (var index = 1; index < arguments.length; index++) {
                 var nextSource = arguments[index];
 
-                if (nextSource != null) { // Skip over if undefined or null
+                if (nextSource != null) {
+                    // Skip over if undefined or null
                     for (var nextKey in nextSource) {
                         // Avoid bugs when hasOwnProperty is shadowed
                         if (Object.prototype.hasOwnProperty.call(nextSource, nextKey)) {
