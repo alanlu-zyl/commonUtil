@@ -1,0 +1,117 @@
+// ========================================================
+// === Variables ===
+// ========================================================
+@color-white: #fff;
+@color-gray-light: #f7f7f7;
+@color-gray-dark: #777;
+
+// ========================================================
+// === Mixins ===
+// ========================================================
+.if(@condition, @property, @value) when (@condition = true) {
+  @{property}: @value;
+}
+
+.content-centered(@x: true, @y: true) {
+  display: flex;
+  .if(@x, justify-content, center);
+  .if(@y, align-items, center);
+}
+
+// ========================================================
+// === Classes ===
+// ========================================================
+.flex-centered {
+  .content-centered();
+}
+
+.flex-centered-X {
+  .content-centered(@y: false);
+}
+
+.flex-centered-Y {
+  .content-centered(@x: false);
+}
+
+// ========================================================
+// === Base ===
+// ========================================================
+*,
+*::after,
+*::before {
+  margin: 0;
+  padding: 0;
+  box-sizing: inherit;
+}
+
+html {
+  // This defines what 1rem is
+  font-size: 62.5%; //1 rem = 10px; 10px/16px = 62.5%
+}
+
+body {
+  box-sizing: border-box;
+  padding: 2rem;
+  background-color: @color-gray-light;
+}
+
+// ========================================================
+// === Typography ===
+// ========================================================
+body {
+  font-family: 'Microsoft JhengHei', sans-serif;
+  font-weight: 400;
+  line-height: 1.7;
+  color: @color-gray-dark;
+}
+
+// ========================================================
+// === Main ===
+// ========================================================
+#app {
+  margin: 0 auto;
+  padding: 2rem 3rem;
+  max-width: 76rem;
+  background-color: @color-white;
+  box-shadow: 0.5rem 0.5rem 1rem @color-gray-dark;
+}
+
+#goTop&:extend(.flex-centered) {
+  position: fixed;
+  right: 2rem;
+  bottom: 6vh;
+  width: 4rem;
+  height: 4rem;
+  background-color: @color-white;
+  border: 0.2rem solid;
+  border-radius: 2rem;
+  transition: box-shadow 0.3s ease;
+  cursor: pointer;
+
+  &::after {
+    content: 'TOP';
+    display: block;
+  }
+
+  &:hover {
+    box-shadow: 0 0 0.5rem @color-gray-dark;
+  }
+}
+
+header {
+  height: 100vh;
+}
+
+nav ul {
+  list-style: none;
+}
+
+main {
+  margin-top: 2rem;
+}
+
+section {
+  margin: 0 auto;
+  height: 100vh;
+  padding: 1rem;
+}

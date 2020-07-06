@@ -1,3 +1,17 @@
+.flex-centered,
+#goTop {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.flex-centered-X {
+  display: flex;
+  justify-content: center;
+}
+.flex-centered-Y {
+  display: flex;
+  align-items: center;
+}
 *,
 *::after,
 *::before {
@@ -10,11 +24,8 @@ html {
 }
 body {
   box-sizing: border-box;
-  padding: 1rem;
-  max-width: 76rem;
-  margin: 0 auto;
-
-
+  padding: 2rem;
+  background-color: #f7f7f7;
 }
 body {
   font-family: 'Microsoft JhengHei', sans-serif;
@@ -22,19 +33,24 @@ body {
   line-height: 1.7;
   color: #777;
 }
+#app {
+  margin: 0 auto;
+  padding: 2rem 3rem;
+  max-width: 76rem;
+  background-color: #fff;
+  box-shadow: 0.5rem 0.5rem 1rem #777;
+}
 #goTop {
   position: fixed;
   right: 2rem;
   bottom: 6vh;
   width: 4rem;
   height: 4rem;
-  display: flex;
-  justify-content: center;
-  align-items: center;
   background-color: #fff;
   border: 0.2rem solid;
-  border-radius: 50%;
+  border-radius: 2rem;
   transition: box-shadow 0.3s ease;
+  cursor: pointer;
 }
 #goTop::after {
   content: 'TOP';
