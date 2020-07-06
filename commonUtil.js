@@ -498,7 +498,6 @@ util.ajax = (function () {
 // DOM相關
 util.dom = (function () {
     var styleSheet = null;
-    var fadeClassSet = [];
 
     function addStyleSheet(styles) {
         if (!styleSheet) {
@@ -615,32 +614,34 @@ util.dom = (function () {
         opts.ms = opts.ms || 300;
         opts.tf = opts.tf || 'ease';
 
-        var fadeClass = 'x-fade-{ms}-{tf}'.format(opts);
-        var hideClass = 'x-hide-{ms}-{tf}'.format(opts);
+        var _style = window.getComputedStyle(ele, null);
+        var _transition = {
+            property: _style.transitionProperty,
+            duration: _style.transitionDuration,
+            delay: _style.transitionDelay,
+            tf: _style.transitionTimingFunction,
+        };
 
-        if (fadeClassSet.indexOf(fadeClass) === -1) {
-            fadeClassSet.push(fadeClass);
+        ele.style['transitionProperty'] = _transition.property + ',opacity,visibility';
+        ele.style['transitionDuration'] = _transition.duration + ',{0}ms,0s'.format(opts.ms);
+        ele.style['transitionTimingFunction'] = _transition.tf + ',{0},{0}'.format(opts.tf);
 
-            var fadeStyles = [
-                '.{0}{transition:opacity {1}ms {2} 0s,visibility 0s {2} 0s,transform {1}ms {2} 0s}}'.format(fadeClass, opts.ms, opts.tf),
-                '.{0}{opacity:0;visibility:hidden;transition-delay:0s,{1}ms}'.format(hideClass, opts.ms, opts.tf),
-            ].join('');
-            addStyleSheet(fadeStyles);
-        }
-
-        ele.classList.add(fadeClass);
-
+        var hideClass = 'x-hide';
         if (!defaultShow) ele.classList.add(hideClass);
 
         opts.showFunc = function () {
+            ele.style['transitionDelay'] = _transition.delay + ',0s,0s';
             ele.classList.remove(hideClass);
         };
         opts.hideFunc = function () {
+            ele.style['transitionDelay'] = _transition.delay + ',0s,{0}ms'.format(opts.ms);
             ele.classList.add(hideClass);
         };
 
         return regToggleBlock(ele, opts, defaultShow);
     }
+
+    addStyleSheet('.x-hide{opacity:0;visibility:hidden}');
 
     return {
         addStyleSheet: addStyleSheet,
