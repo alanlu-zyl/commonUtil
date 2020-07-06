@@ -11,11 +11,11 @@
 
 ## util.date `日期相關`
 
-## util.processControl `處理控制相關`
-
 ## util.browser `瀏覽器相關`
 
 ## util.url `URL相關`
+
+## util.processControl `處理控制相關`
 
 ## util.ajax `AJAX`
 
