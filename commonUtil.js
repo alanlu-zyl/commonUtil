@@ -22,6 +22,24 @@
 
 // Util
 var util = {
+    domReady: function () {
+        return new Promise(function (resolve) {
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', resolve);
+            } else {
+                resolve();
+            }
+        });
+    },
+    windowReady: function () {
+        return new Promise(function (resolve) {
+            if (document.readyState === 'complete') {
+                resolve();
+            } else {
+                window.addEventListener('load', resolve);
+            }
+        });
+    },
     // 節流閥 (執行函式, 必執行(毫秒), 延遲執行(毫秒))
     throttle: function (func, mustRun, delay) {
         mustRun = mustRun || 150;
@@ -61,33 +79,6 @@ var util = {
                 func.apply(context, args);
             }, delay);
         };
-    },
-    // 滾動至 (位置, 持續時間, 回呼函式)
-    scrollTo: function (to, duration, callback) {
-        var element = document.scrollingElement || document.documentElement;
-        var start = element.scrollTop;
-        var change = to - start;
-        var startDate = +new Date();
-        duration = duration || 500;
-
-        var easeInOutQuad = function (t, b, c, d) {
-            t /= d / 2;
-            if (t < 1) return (c / 2) * t * t + b;
-            t -= 1;
-            return (-c / 2) * (t * (t - 2) - 1) + b;
-        };
-        var animateScroll = function () {
-            var currentDate = +new Date();
-            var currentTime = currentDate - startDate;
-            element.scrollTop = parseInt(easeInOutQuad(currentTime, start, change, duration));
-            if (currentTime < duration) {
-                requestAnimationFrame(animateScroll);
-            } else {
-                element.scrollTop = to;
-                if (callback) callback();
-            }
-        };
-        animateScroll();
     },
     piper: function (/* functions */) {
         var fs = [].slice.apply(arguments);
@@ -420,7 +411,19 @@ util.ajax = (function () {
             var xhr = newXHR();
             xhr.onload = function () {
                 if (this.status >= 200 && this.status < 400) {
-                    resolve(xhr.response);
+                    var res;
+
+                    try {
+                        res = JSON.parse(this.response);
+                    } catch (e) {
+                        res = this.response;
+                    }
+
+                    resolve({
+                        status: this.status,
+                        statusText: this.statusText,
+                        data: res.Data || res,
+                    });
                 } else {
                     reject({
                         status: this.status,
@@ -449,15 +452,7 @@ util.ajax = (function () {
             params: params,
         };
 
-        var promise = _ajax(opts).then(function (data) {
-            var res;
-            try {
-                res = JSON.parse(data);
-            } catch (e) {
-                res = data;
-            }
-            return res;
-        });
+        var promise = _ajax(opts);
 
         if (successFunc) {
             return promise.then(successFunc).catch(errorFunc || errorHandler());
@@ -550,45 +545,44 @@ util.dom = (function () {
         return script;
     }
 
-    function wrap(el, wrapper) {
+    function wrap(ele, wrapper) {
         wrapper = wrapper || document.createElement('div');
-        el.parentNode.insertBefore(wrapper, el);
-        wrapper.appendChild(el);
+        ele.parentNode.insertBefore(wrapper, ele);
+        wrapper.appendChild(ele);
     }
 
-    function getOffset(el) {
-        const rect = el.getBoundingClientRect();
-
+    function getScrollPosition() {
+        var root = document.documentElement || document.body;
         return {
-            top: rect.top + (window.scrollY || window.pageYOffset),
-            left: rect.left + (window.scrollX || window.pageXOffset),
+            x: window.pageXOffset || root.scrollLeft || 0,
+            y: window.pageYOffset || root.scrollTop || 0,
         };
     }
 
-    function regToggleFade(ele, opts, defaultShow) {
+    function getOffset(ele) {
+        var rect = ele.getBoundingClientRect(),
+            scroll = getScrollPosition();
+        return {
+            top: rect.top + scroll.y,
+            left: rect.left + scroll.x,
+        };
+    }
+
+    function regToggleBlock(ele, opts, defaultShow) {
         var opts = opts || {};
         opts.ms = opts.ms || 300;
-        opts.tf = opts.tf || 'ease';
 
-        var fadeClass = 'x-fade-{ms}-{tf}'.format(opts);
-        var hideClass = 'x-hide-{ms}-{tf}'.format(opts);
-        var activeClass = opts.activeClass || '';
-
-        if (fadeClassSet.indexOf(fadeClass) === -1) {
-            fadeClassSet.push(fadeClass);
-
-            var fadeStyles = [
-                '.{0}{transition-property:opacity,visibility;transition-duration:{1}ms,0s;transition-timing-function:{2}}'.format(fadeClass, opts.ms, opts.tf),
-                '.{0}{opacity:0;visibility:hidden;transition-duration:{1}ms,0s;transition-delay:0s,{1}ms;transition-timing-function:{2}}'.format(hideClass, opts.ms, opts.tf),
-            ].join('');
-            addStyleSheet(fadeStyles);
-        }
-
-        ele.classList.add(fadeClass);
+        var showFunc = function () {
+            if (opts.activeClass) ele.classList.add(opts.activeClass);
+            if (opts.showFunc) opts.showFunc();
+        };
+        var hideFunc = function () {
+            if (opts.activeClass) ele.classList.remove(opts.activeClass);
+            if (opts.hideFunc) opts.hideFunc();
+        };
 
         if (!defaultShow) {
             ele.style.display = 'none';
-            ele.classList.add(hideClass);
         }
 
         var timeoutId = null;
@@ -599,16 +593,14 @@ util.dom = (function () {
                 if (ele.style.display === 'none') {
                     ele.style.display = '';
                     timeoutId = setTimeout(function () {
-                        ele.classList.remove(hideClass);
-                        if (activeClass) ele.classList.add(activeClass);
+                        showFunc();
                     }, 50);
                 } else {
-                    ele.classList.remove(hideClass);
-                    if (activeClass) ele.classList.add(activeClass);
+                    showFunc();
                 }
             } else {
-                ele.classList.add(hideClass);
-                if (activeClass) ele.classList.remove(activeClass);
+                hideFunc();
+
                 timeoutId = setTimeout(function () {
                     timeoutId = null;
                     ele.style.display = 'none';
@@ -617,13 +609,47 @@ util.dom = (function () {
         };
     }
 
+    function regToggleFade(ele, opts, defaultShow) {
+        var opts = opts || {};
+        opts.ms = opts.ms || 300;
+        opts.tf = opts.tf || 'ease';
+
+        var fadeClass = 'x-fade-{ms}-{tf}'.format(opts);
+        var hideClass = 'x-hide-{ms}-{tf}'.format(opts);
+
+        if (fadeClassSet.indexOf(fadeClass) === -1) {
+            fadeClassSet.push(fadeClass);
+
+            var fadeStyles = [
+                '.{0}{transition:opacity {1}ms {2} 0s,visibility 0s {2} 0s,transform {1}ms {2} 0s}}'.format(fadeClass, opts.ms, opts.tf),
+                '.{0}{opacity:0;visibility:hidden;transition-delay:0s,{1}ms}'.format(hideClass, opts.ms, opts.tf),
+            ].join('');
+            addStyleSheet(fadeStyles);
+        }
+
+        ele.classList.add(fadeClass);
+
+        if (!defaultShow) ele.classList.add(hideClass);
+
+        opts.showFunc = function () {
+            ele.classList.remove(hideClass);
+        };
+        opts.hideFunc = function () {
+            ele.classList.add(hideClass);
+        };
+
+        return regToggleBlock(ele, opts, defaultShow);
+    }
+
     return {
         addStyleSheet: addStyleSheet,
         loadStyleSheet: loadStyleSheet,
         loadScript: loadScript,
         nodeScriptReplace: nodeScriptReplace,
         wrap: wrap,
+        getScrollPosition: getScrollPosition,
         getOffset: getOffset,
+        regToggleBlock: regToggleBlock,
         regToggleFade: regToggleFade,
     };
 })();
@@ -666,7 +692,7 @@ util.img = (function () {
             className = 'x-pic-{0}-{1}'.format(rf[0], rf[1]);
             if (radioClasses.indexOf(className) === -1) {
                 radioClasses.push(className);
-                util.dom.addStyleSheet('.{0}{padding-top:{1}%}'.format(className, ratio));
+                util.dom.addStyleSheet('.{0}::before{content:"";display:block;padding-top:{1}%}'.format(className, ratio));
             }
         }
 
@@ -694,12 +720,77 @@ util.anchor = (function () {
     var wrapper = null;
     var sections = [];
 
-    function setFixedHeader(el) {
-        if (el) fixedHeader = el;
+    // 滾動處理
+    var scrollHander = null;
+
+    // 初始錨點定位
+    var defaultHash = null;
+
+    if (location.hash) {
+        defaultHash = location.hash;
+        util.url.updateHash();
+        _scrollTo(0, 0);
+
+        util.domReady().then(function () {
+            untilDefalut(0);
+        });
     }
 
-    function setWrapper(el) {
-        if (el) wrapper = el;
+    function untilDefalut(duration) {
+        if (!defaultHash) return false;
+        util.processControl.check('anchor-untilDefalut').then(function (process) {
+            if (!process.canStart()) return false;
+            // 每次最少執行秒數
+            var leastLoading = util.processControl.leastLoading(500);
+            // 錨點目標
+            var anchorTarget = document.querySelector(defaultHash);
+            var anchorTargetTop = null;
+
+            // 直到錨點函式
+            var untilFunc = leastLoading.bind(null, function () {
+                var next = null;
+                var tempTop = getElementTop(anchorTarget);
+                // 如果錨點還沒生成 或還在改變 (沒改變則停止)
+                if (anchorTargetTop !== tempTop) {
+                    // 再延遲執行一次
+                    next = function () {
+                        setTimeout(function () {
+                            untilDefalut(duration);
+                        }, 500);
+                    };
+                }
+
+                process.done(next);
+            });
+
+            if (!anchorTarget) {
+                untilFunc();
+            } else {
+                anchorTargetTop = getElementTop(anchorTarget);
+                _scrollTo(anchorTargetTop, duration, untilFunc);
+            }
+        });
+    }
+
+    function setFixedHeader(ele) {
+        if (ele) fixedHeader = ele;
+    }
+
+    function setWrapper(ele) {
+        if (ele) wrapper = ele;
+    }
+
+    function getElementTop(ele) {
+        if (!ele) return 0;
+
+        //var scrollY = util.dom.getOffset(ele).top;
+        var scrollY = ele.offsetTop;
+
+        if (ele.offsetParent) scrollY += ele.offsetParent.offsetTop;
+        if (fixedHeader) scrollY -= fixedHeader.clientHeight;
+        if (wrapper) scrollY -= wrapper.offsetTop;
+
+        return scrollY;
     }
 
     function setSections(id) {
@@ -707,39 +798,31 @@ util.anchor = (function () {
     }
 
     // TODO: 設定初始數據
-    function setSectionsData(el) {
-        setSections(el.id);
+    function setSectionsData(ele) {
+        setSections(ele.id);
     }
 
     // 區塊錨點處理
     function scrollHashHandler() {
-        var hasHash = false;
-
-        var docView = document.scrollingElement || document.documentElement;
-        var docViewTop = docView.scrollTop;
-        var docViewBottom = docView.scrollTop + docView.clientHeight;
+        var root = document.documentElement || document.body,
+            rootTop = root.scrollTop,
+            rootBottom = rootTop + root.clientHeight,
+            targetHash = null;
 
         // TODO: 可優化 記錄順序等...
         for (var i = 0, sectionID; (sectionID = sections[i]); i++) {
-            var eleTop;
-            var eleBottom;
-
-            var el = document.getElementById(sectionID);
-            //eleTop = util.dom.getOffset(el).top
-            eleTop = el.offsetParent.offsetTop + el.offsetTop;
-            if (fixedHeader) eleTop -= fixedHeader.clientHeight;
-            if (wrapper) eleTop -= wrapper.offsetTop;
-            eleBottom = eleTop + el.clientHeight;
+            var ele = document.getElementById(sectionID),
+                eleTop = getElementTop(ele),
+                eleBottom = eleTop + ele.clientHeight;
 
             // TODO: 顯示條件可優化
-            if (eleTop < docViewBottom && eleBottom > docViewTop) {
-                window.history.replaceState(null, null, '#' + sectionID);
-                hasHash = true;
+            if (eleTop < rootBottom && eleBottom > rootTop) {
+                targetHash = sectionID;
                 break;
             }
         }
 
-        if (!hasHash) util.url.removeHash();
+        util.url.updateHash(targetHash);
     }
 
     // 滾動處理
@@ -752,18 +835,75 @@ util.anchor = (function () {
         scrollTo(anchor, duration, callback);
     }
 
+    // 滾動至
     function scrollTo(selector, duration, callback) {
         if (!selector) return;
 
         var targetAnchor = document.querySelector(selector);
         if (!targetAnchor) return;
 
-        var scrollY = targetAnchor.offsetParent.offsetTop + targetAnchor.offsetTop;
-        //var scrollY = util.dom.getOffset(targetAnchor).top;
-        if (wrapper) scrollY -= wrapper.offsetTop;
-        if (fixedHeader) scrollY -= fixedHeader.clientHeight;
+        _scrollTo(getElementTop(targetAnchor), duration, callback);
+    }
 
-        util.scrollTo(scrollY, duration, callback);
+    // 滾動至 (位置, 持續時間, 回呼函式)
+    function _scrollTo(to, duration, callback) {
+        var root = document.documentElement || document.body,
+            start = root.scrollTop,
+            change = to - start,
+            startDate = +new Date();
+
+        if (duration === 0) {
+            root.scrollTop = to;
+            if (callback) callback();
+            return true;
+        }
+
+        duration = duration || 500;
+
+        var easeInOutQuad = function (t, b, c, d) {
+            t /= d / 2;
+            if (t < 1) return (c / 2) * t * t + b;
+            t -= 1;
+            return (-c / 2) * (t * (t - 2) - 1) + b;
+        };
+        var animateScroll = function () {
+            var currentDate = +new Date();
+            var currentTime = currentDate - startDate;
+            root.scrollTop = parseInt(easeInOutQuad(currentTime, start, change, duration));
+            if (currentTime < duration) {
+                requestAnimationFrame(animateScroll);
+            } else {
+                root.scrollTop = to;
+                if (callback) callback();
+            }
+        };
+        animateScroll();
+    }
+
+    // 處理錨點連結
+    function processLinks(links, duration, callback) {
+        var anchorLinks = links || document.querySelectorAll('a[href^="#"]');
+        [].forEach.call(anchorLinks, function (link) {
+            link.addEventListener('click', function (e) {
+                e.preventDefault();
+                scrollHandler(e.target, duration, callback);
+            });
+        });
+    }
+
+    // 處理錨點區塊
+    function processSections(sections) {
+        var sectionEls = sections || document.querySelectorAll('section');
+        if (sectionEls && sectionEls.length > 0) {
+            [].forEach.call(sectionEls, function (sectionEl) {
+                util.anchor.setSectionsData(sectionEl, false);
+            });
+
+            if (!scrollHander) {
+                scrollHander = util.throttle(util.anchor.scrollHashHandler);
+                document.addEventListener('scroll', scrollHander);
+            }
+        }
     }
 
     return {
@@ -774,11 +914,14 @@ util.anchor = (function () {
         scrollHashHandler: scrollHashHandler,
         scrollHandler: scrollHandler,
         scrollTo: scrollTo,
+        scrollTop: _scrollTo.bind(null, 0),
+        untilDefalut: untilDefalut,
+        processLinks: processLinks,
+        processSections: processSections,
     };
 })();
 
-// TODO: OOP
-// 模態框
+// 模態框 (TODO: OOP)
 util.modal = (function () {
     // 模態框
     var modal = {};
