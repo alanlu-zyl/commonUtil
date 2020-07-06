@@ -254,8 +254,9 @@ util.url = (function () {
         return key ? urlParams[key] : Object.assign({}, urlParams);
     }
 
-    function removeHash() {
-        window.history.replaceState('', '/', window.location.pathname + window.location.search);
+    function updateHash(hash) {
+        hash = hash ? '#' + hash : window.location.pathname + window.location.search;
+        window.history.replaceState(null, null, hash);
     }
 
     function redirectMemberLogin() {
@@ -265,7 +266,7 @@ util.url = (function () {
 
     return {
         getParams: getParams,
-        removeHash: removeHash,
+        updateHash: updateHash,
         redirectMemberLogin: redirectMemberLogin,
     };
 })();
