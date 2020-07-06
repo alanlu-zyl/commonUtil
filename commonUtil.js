@@ -9,10 +9,10 @@
         col = typeof col === 'object' ? col : [].slice.call(arguments, 1);
 
         return str.replace(/\{\{|\}\}|\{(\w+)\}/g, function (m, n) {
-            if (m == '{{') {
+            if (m === '{{') {
                 return '{';
             }
-            if (m == '}}') {
+            if (m === '}}') {
                 return '}';
             }
             return col[n];
@@ -192,7 +192,7 @@ util.math = {
 
 // 日期相關
 util.date = (function () {
-    var week = new Array('日', '一', '二', '三', '四', '五', '六');
+    var week = ['日', '一', '二', '三', '四', '五', '六'];
 
     function get(date) {
         return date ? new Date(date) : new Date();
@@ -726,8 +726,8 @@ util.anchor = (function () {
     // 初始錨點定位
     var defaultHash = null;
 
-    if (location.hash) {
-        defaultHash = location.hash;
+    if (window.location.hash) {
+        defaultHash = window.location.hash;
         util.url.updateHash();
         _scrollTo(0, 0);
 
@@ -869,7 +869,7 @@ util.anchor = (function () {
         var animateScroll = function () {
             var currentDate = +new Date();
             var currentTime = currentDate - startDate;
-            root.scrollTop = parseInt(easeInOutQuad(currentTime, start, change, duration));
+            root.scrollTop = parseInt(easeInOutQuad(currentTime, start, change, duration), 10);
             if (currentTime < duration) {
                 requestAnimationFrame(animateScroll);
             } else {
@@ -1157,7 +1157,7 @@ util.modal = (function () {
     (function initStyles(styles) {
         var modalStyles = styles;
         if (!modalStyles) {
-            var modalStyles = [
+            modalStyles = [
                 '.{backdrop}{z-index:1040;position:fixed;top:0;right:0;bottom:0;left:0;width:100%;height:100%;display:block;background-color:rgba(18,18,18,.5)}',
                 '.{backdrop_error}{z-index:1041}',
                 '.{backdrop_active}>.{block}{transform:translateX(-50%) translateY(-50%)}',
@@ -1244,7 +1244,7 @@ util.createAsyncFunction = function (fn) {
         util.dom.loadScript('https://cdn.jsdelivr.net/npm/promise-polyfill@8/dist/polyfill.min.js');
     }
     // Object.assign
-    if (typeof Object.assign != 'function') {
+    if (typeof Object.assign !== 'function') {
         Object.assign = function (target, varArgs) {
             // .length of function is 2
             'use strict';
