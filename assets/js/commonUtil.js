@@ -22,33 +22,30 @@
 
 // Util
 var util = {
-  domReady: function (callBack) {
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', callBack);
-    } else {
-      callBack();
-    }
-    // return new Promise(function (resolve) {
-    //   if (document.readyState === 'loading') {
-    //     document.addEventListener('DOMContentLoaded', resolve);
-    //   } else {
-    //     resolve();
-    //   }
-    // });
+  domReady: function (callback) {
+    return new Promise(function (resolve) {
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function () {
+          if (callback) callback();
+          resolve();
+        });
+      } else {
+        if (callback) callback();
+        resolve();
+      }
+    });
   },
-  windowReady: function (callBack) {
-    if (document.readyState === 'complete') {
-      callBack();
-    } else {
-      window.addEventListener('load', callBack);
-    }
-    // return new Promise(function (resolve) {
-    //   if (document.readyState === 'complete') {
-    //     resolve();
-    //   } else {
-    //     window.addEventListener('load', resolve);
-    //   }
-    // });
+  windowReady: function (callback) {
+    return new Promise(function (resolve) {
+      if (document.readyState === 'complete') {
+        if (callback) callback();
+      } else {
+        window.addEventListener('load', function () {
+          if (callback) callback();
+          resolve();
+        });
+      }
+    });
   },
   // 節流閥 (執行函式, 必執行(毫秒), 延遲執行(毫秒))
   throttle: function (func, mustRun, delay) {
@@ -730,20 +727,19 @@ util.img = (function () {
 util.anchor = (function () {
   var fixedHeader = null;
   var wrapper = null;
-  var sections = [];
 
-  // 滾動處理
-  var scrollHander = null;
+  // 區塊錨點
+  var sections = [];
+  var sectionsScrollHandler = null;
 
   // 初始錨點定位
   var defaultHash = null;
 
   if (window.location.hash) {
     defaultHash = window.location.hash;
-    util.url.updateHash();
-    _scrollTo(0, 0);
-
     util.domReady(function () {
+      // util.url.updateHash();
+      // _scrollTo(0, 0);
       untilDefault(0);
     });
   }
@@ -756,14 +752,15 @@ util.anchor = (function () {
       var leastLoading = util.processControl.leastLoading(500);
       // 錨點目標
       var anchorTarget = document.querySelector(defaultHash);
-      var anchorTargetTop = null;
 
       // 直到錨點函式
       var untilFunc = leastLoading.bind(null, function () {
-        var next = null;
-        var tempTop = getElementTop(anchorTarget);
-        // 如果錨點還沒生成 或還在改變 (沒改變則停止)
-        if (anchorTargetTop !== tempTop) {
+        var next = null,
+          anchorTargetTop = getElementTop(anchorTarget),
+          scrollY = util.dom.getScrollPosition().y;
+
+        // 如果錨點還沒生成 或還沒定位 (定位則停止)
+        if (anchorTargetTop !== scrollY) {
           // 再延遲執行一次
           next = function () {
             setTimeout(function () {
@@ -778,8 +775,7 @@ util.anchor = (function () {
       if (!anchorTarget) {
         untilFunc();
       } else {
-        anchorTargetTop = getElementTop(anchorTarget);
-        _scrollTo(anchorTargetTop, duration, untilFunc);
+        _scrollTo(getElementTop(anchorTarget), duration, untilFunc);
       }
     });
   }
@@ -911,9 +907,9 @@ util.anchor = (function () {
         util.anchor.setSectionsData(sectionEl, false);
       });
 
-      if (!scrollHander) {
-        scrollHander = util.throttle(util.anchor.scrollHashHandler);
-        document.addEventListener('scroll', scrollHander);
+      if (!sectionsScrollHandler) {
+        sectionsScrollHandler = util.throttle(util.anchor.scrollHashHandler);
+        document.addEventListener('scroll', sectionsScrollHandler);
       }
     }
   }
@@ -1251,10 +1247,6 @@ util.createAsyncFunction = function (fn) {
 
 // Polyfill - check support(simple)
 (function () {
-  // Promise
-  if (!('Promise' in window)) {
-    util.dom.loadScript('https://cdn.jsdelivr.net/npm/promise-polyfill@8/dist/polyfill.min.js');
-  }
   // Object.assign
   if (typeof Object.assign !== 'function') {
     Object.assign = function (target, varArgs) {
