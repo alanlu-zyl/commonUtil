@@ -22,23 +22,33 @@
 
 // Util
 var util = {
-  domReady: function () {
-    return new Promise(function (resolve) {
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', resolve);
-      } else {
-        resolve();
-      }
-    });
+  domReady: function (callBack) {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', callBack);
+    } else {
+      callBack();
+    }
+    // return new Promise(function (resolve) {
+    //   if (document.readyState === 'loading') {
+    //     document.addEventListener('DOMContentLoaded', resolve);
+    //   } else {
+    //     resolve();
+    //   }
+    // });
   },
-  windowReady: function () {
-    return new Promise(function (resolve) {
-      if (document.readyState === 'complete') {
-        resolve();
-      } else {
-        window.addEventListener('load', resolve);
-      }
-    });
+  windowReady: function (callBack) {
+    if (document.readyState === 'complete') {
+      callBack();
+    } else {
+      window.addEventListener('load', callBack);
+    }
+    // return new Promise(function (resolve) {
+    //   if (document.readyState === 'complete') {
+    //     resolve();
+    //   } else {
+    //     window.addEventListener('load', resolve);
+    //   }
+    // });
   },
   // 節流閥 (執行函式, 必執行(毫秒), 延遲執行(毫秒))
   throttle: function (func, mustRun, delay) {
@@ -184,7 +194,7 @@ util.math = {
     return [numerator / gcd, denominator / gcd];
   },
   // 千位符
-  intThusandth: function (val) {
+  intThousandth: function (val) {
     if (!val) return val;
     return val.toString().replace(/(\d)(?=(\d{3})+(?:\.\d+)?$)/g, '$1,');
   },
@@ -237,12 +247,12 @@ util.browser = (function () {
     var isEdge = userAgent.indexOf('Edge/') > 0;
 
     if (isIE || isEdge) {
-      util.modal.openError('notSuppertIE', null, '您的瀏覽器過舊，請使用new Edge或Chrome以獲得更好的網站體驗。');
+      util.modal.openError('notSupportIE', null, '您的瀏覽器過舊，請使用new Edge或Chrome以獲得更好的網站體驗。');
     }
   }
 
   return {
-    notSuppertIE: notSuppertIE,
+    notSupportIE: notSupportIE,
   };
 })();
 
@@ -733,14 +743,14 @@ util.anchor = (function () {
     util.url.updateHash();
     _scrollTo(0, 0);
 
-    util.domReady().then(function () {
-      untilDefalut(0);
+    util.domReady(function () {
+      untilDefault(0);
     });
   }
 
-  function untilDefalut(duration) {
+  function untilDefault(duration) {
     if (!defaultHash) return false;
-    util.processControl.check('anchor-untilDefalut').then(function (process) {
+    util.processControl.check('anchor-untilDefault').then(function (process) {
       if (!process.canStart()) return false;
       // 每次最少執行秒數
       var leastLoading = util.processControl.leastLoading(500);
@@ -757,7 +767,7 @@ util.anchor = (function () {
           // 再延遲執行一次
           next = function () {
             setTimeout(function () {
-              untilDefalut(duration);
+              untilDefault(duration);
             }, 500);
           };
         }
@@ -917,7 +927,7 @@ util.anchor = (function () {
     scrollHandler: scrollHandler,
     scrollTo: scrollTo,
     scrollTop: _scrollTo.bind(null, 0),
-    untilDefalut: untilDefalut,
+    untilDefault: untilDefault,
     processLinks: processLinks,
     processSections: processSections,
   };
