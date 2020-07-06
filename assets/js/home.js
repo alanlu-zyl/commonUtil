@@ -1,4 +1,4 @@
-util.domReady().then(function () {
+util.domReady(function () {
   // goTop
   var goTop = document.getElementById('goTop');
   goTop.addEventListener('click', function (e) {
