@@ -241,7 +241,7 @@ util.date = (function () {
 
 // 瀏覽器相關
 util.browser = (function () {
-  function notSuppertIE() {
+  function notSupportIE() {
     var userAgent = window.navigator.userAgent;
     var isIE = userAgent.indexOf('MSIE') > 0 || userAgent.indexOf('Trident/') > 0;
     var isEdge = userAgent.indexOf('Edge/') > 0;
