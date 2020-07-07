@@ -39,6 +39,7 @@ var util = {
     return new Promise(function (resolve) {
       if (document.readyState === 'complete') {
         if (callback) callback();
+        resolve();
       } else {
         window.addEventListener('load', function () {
           if (callback) callback();
