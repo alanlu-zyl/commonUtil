@@ -1012,7 +1012,7 @@ util.modal = (function () {
         '.{backdrop_active}>.{block}{transform:translateX(-50%) translateY(-50%)}',
         '.{block}{position:absolute;top:50%;left:50%;transform:translateX(-50%) translateY(-70%);transition:transform .5s ease}',
         '.{closeBtn}{position:absolute;top:15px;right:15px;width:15px;height:15px;line-height:15px;text-align:center;font-size:24px;cursor:pointer}',
-        '.{content}{position:relative;background-clip:padding-box;border-radius:5px;border:none;background-color:#fff;box-shadow: 0 0px 20px #000;overflow:hidden;outline:0}',
+        '.{content}{position:relative;background-clip:padding-box;border-radius:5px;border:none;background-color:#fff;box-shadow: 0 0px 20px rgba(0,0,0,.2);overflow:hidden;outline:0}',
         '.{contentHeader}{padding:15px 15px 10px;border-bottom:1px solid #999}',
         '.{contentHeader}>*{font-size:18px;font-weight:700;}',
         '.{contentBody}{box-sizing:border-box;padding:15px;min-width:300px;max-width:90vw;min-height:70px;max-height:80vh;overflow:auto}',
