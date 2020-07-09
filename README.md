@@ -1,8 +1,24 @@
 # commonUtil 通用模組
 
+## (Default)
+- domReady
+- windowReady
+- throttle
+- debounce
+- pipe
+- deepCopy
+- newEnum
+ 
 ## util.convert `轉換相關`
+- obj2QueryString
+- queryString2Obj
+- json2ObjByKey
 
-## util.array `陣列相關`
+## util.arr `陣列相關`
+- slice
+- limit
+- find
+- findObjByKey
 
 ## util.date `日期相關`
 
