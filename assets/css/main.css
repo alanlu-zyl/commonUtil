@@ -24,21 +24,29 @@ html {
 }
 body {
   box-sizing: border-box;
-  padding: 2rem;
   background-color: #f7f7f7;
 }
 body {
   font-family: 'Microsoft JhengHei', sans-serif;
   font-weight: 400;
   line-height: 1.7;
-  color: #777;
 }
-#app {
-  margin: 0 auto;
-  padding: 2rem 3rem;
-  max-width: 76rem;
-  background-color: #fff;
-  box-shadow: 0.5rem 0.5rem 1rem #777;
+textarea {
+  font-size: 0.5em;
+  width: 100%;
+  min-height: 10rem;
+}
+.btn {
+  margin: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  color: #333;
+  background-color: #f7f7f7;
+  border: 1px solid #777;
+  border-radius: 3px;
+  cursor: pointer;
+}
+#app > * {
+  padding: 1rem;
 }
 #goTop {
   position: fixed;
@@ -59,17 +67,29 @@ body {
 #goTop:hover {
   box-shadow: 0 0 0.5rem #777;
 }
-header {
+nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 15rem;
   height: 100vh;
+  overflow-y: scroll;
+  background-color: #fff;
 }
 nav ul {
   list-style: none;
 }
+nav > ul ul {
+  margin-left: 1rem;
+}
 main {
-  margin-top: 2rem;
+  margin-left: 15rem;
 }
 section {
   margin: 0 auto;
-  height: 100vh;
+  min-height: 100vh;
   padding: 1rem;
+}
+section h3 {
+  margin-top: 1rem;
 }

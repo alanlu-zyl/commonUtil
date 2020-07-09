@@ -1,97 +1,119 @@
 'use strict';
 
-// String.format
-(function () {
+(function StringFormat() {
+  String.format = function (str, col) {
+    col = typeof col === 'object' ? col : [].slice.call(arguments, 1);
+    return str.replace(/\{\{|\}\}|\{(\w+)\}/g, function (m, n) {
+      if (m === '{{') return '{';
+      if (m === '}}') return '}';
+      return col[n] || '';
+    });
+  };
   String.prototype.format = function () {
     return String.format.bind(null, this.toString()).apply(null, arguments);
   };
-  String.format = function (str, col) {
-    col = typeof col === 'object' ? col : [].slice.call(arguments, 1);
+})();
 
-    return str.replace(/\{\{|\}\}|\{(\w+)\}/g, function (m, n) {
-      if (m === '{{') {
-        return '{';
-      }
-      if (m === '}}') {
-        return '}';
-      }
-      return col[n];
+(function Polyfills() {
+  if (typeof Object.assign !== 'function') {
+    Object.assign = function (target) {
+      if (target == null) throw new TypeError('Cannot convert undefined or null to object');
+      const to = Object(target);
+      [].forEach.call([].slice.call(arguments, 1), function (nextSource) {
+        if (nextSource != null) {
+          [].forEach.call(Object.keys(nextSource), function (nextKey) {
+            to[nextKey] = nextSource[nextKey];
+          });
+        }
+      });
+      return to;
+    };
+  }
+  if (!Array.prototype.find) {
+    Object.defineProperty(Array.prototype, 'find', {
+      value: function (predicate) {
+        if (this == null) throw TypeError('"this" is null or not defined');
+        if (typeof predicate !== 'function') throw TypeError('predicate must be a function');
+        const o = Object(this);
+        const thisArg = arguments[1];
+        let k = 0;
+        while (k < o.length) {
+          var kValue = o[k];
+          if (predicate.call(thisArg, kValue, k, o)) return kValue;
+          k++;
+        }
+        return undefined;
+      },
+      configurable: true,
+      writable: true,
     });
-  };
+  }
 })();
 
 // Util
-var util = {
+const util = {
   domReady: function (callback) {
     return new Promise(function (resolve) {
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function () {
-          if (callback) callback();
-          resolve();
-        });
-      } else {
+      const func = function () {
         if (callback) callback();
         resolve();
-      }
+      };
+      if (document.readyState !== 'loading') func();
+      else document.addEventListener('DOMContentLoaded', func);
     });
   },
   windowReady: function (callback) {
     return new Promise(function (resolve) {
-      if (document.readyState === 'complete') {
+      const func = function () {
         if (callback) callback();
         resolve();
-      } else {
-        window.addEventListener('load', function () {
-          if (callback) callback();
-          resolve();
-        });
-      }
+      };
+      if (document.readyState === 'complete') func();
+      else window.addEventListener('load', func);
     });
   },
-  // 節流閥 (執行函式, 必執行(毫秒), 延遲執行(毫秒))
   throttle: function (func, mustRun, delay) {
     mustRun = mustRun || 150;
-    delay = delay === 0 || !!delay ? delay : 100;
-    var timeoutId = null,
-      lastTime = 0;
+    delay = delay || delay === 0 ? delay : 100;
+    let timer = null;
+    let lastTime = 0;
 
     return function () {
-      var context = this,
-        args = arguments;
+      const context = this;
+      const args = arguments;
 
-      clearTimeout(timeoutId);
-      var now = new Date();
+      clearTimeout(timer);
+      const now = new Date();
       if (now - lastTime >= mustRun) {
-        func.apply(context, args);
         lastTime = now;
+        func.apply(context, args);
       } else if (delay > 0) {
-        timeoutId = setTimeout(function () {
-          timeoutId = null;
+        timer = setTimeout(function () {
+          timer = null;
           func.apply(context, args);
         }, delay);
       }
     };
   },
-  // 防抖動 (執行函式, 延遲執行(毫秒))
   debounce: function (func, delay) {
     delay = delay || 100;
-    var timeoutId = null;
+    let timer = null;
 
     return function () {
-      var context = this,
-        args = arguments;
+      const context = this;
+      const args = arguments;
 
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(function () {
-        timeoutId = null;
+      clearTimeout(timer);
+      timer = setTimeout(function () {
+        timer = null;
         func.apply(context, args);
       }, delay);
     };
   },
-  piper: function (/* functions */) {
-    var fs = [].slice.apply(arguments);
+  pipe: function (/* functions */) {
+    const fns = [].slice.apply(arguments);
     return function (/* arguments */) {
-      return fs.reduce(
+      return fns.reduce(
         function (args, f) {
           return [f.apply(this, args)];
         }.bind(this),
@@ -120,39 +142,21 @@ var util = {
     }
   },
   newEnum: function (seed) {
-    var p = {};
-    for (var k in seed) {
-      var v = seed[k];
-      if (v instanceof Array) p[(seed[k] = v[0])] = { value: v[0], name: v[1], code: v[2] };
-      else p[v] = { value: v, name: k.toLowerCase(), code: k.substring(0, 1) };
-    }
-    seed.properties = p;
-
+    // properties
+    seed.prop = Object.keys(seed).reduce(function (acc, k) {
+      const v = seed[k];
+      if (v instanceof Array) acc[(seed[k] = v[0])] = { value: v[0], name: v[1], code: v[2] };
+      else acc[v] = { value: v, name: k.toLowerCase(), code: k.substring(0, 1) };
+      return acc;
+    }, {});
     return Object.freeze ? Object.freeze(seed) : seed;
   },
 };
 
-// 陣列相關
-util.array = {
-  limit: function (arr, count) {
-    return arr.slice(0, count);
-  },
-};
-
-// 物件相關
-util.obj = {
-  find: function (obj, key, value) {
-    return obj.find(function (item) {
-      return item[key] === value;
-    });
-  },
-};
-
 // 轉換相關
-util.convert = {
-  obj2QueryString: function (params) {
+util.convert = (function () {
+  function obj2QueryString(params) {
     if (!params) return '';
-
     return Object.keys(params)
       .map(function (key) {
         return '{key}={value}'.format({
@@ -161,46 +165,63 @@ util.convert = {
         });
       })
       .join('&');
-  },
-  queryString2Obj: function (str) {
+  }
+
+  function queryString2Obj(str) {
     if (!str) return {};
+    return str.split('&').reduce(function (acc, params) {
+      const p = params.split('=', 2);
+      if (p.length > 1) acc[p[0]] = decodeURIComponent(p[1].replace(/\+/g, ' '));
+      return acc;
+    }, {});
+  }
 
-    var obj = {};
-    [].forEach.call(str.split('&'), function (params) {
-      var p = params.split('=', 2);
-      obj[p[0]] = p.length > 1 ? decodeURIComponent(p[1].replace(/\+/g, ' ')) : '';
-    });
-
-    return obj;
-  },
-  json2ObjByKey: function (json, key) {
+  function json2ObjByKey(json, key) {
     return json.reduce(function (acc, obj) {
       if (obj[key]) acc[obj[key]] = !acc[obj[key]] ? obj : Object.assign({}, acc[obj[key]], obj);
       return acc;
     }, {});
-  },
-};
+  }
 
-// 數學相關
-util.math = {
-  // 最簡分數
-  reduceFraction: function (numerator, denominator) {
-    var gcd = function gcd(a, b) {
-      return b ? gcd(b, a % b) : a;
-    };
-    gcd = gcd(numerator, denominator);
-    return [numerator / gcd, denominator / gcd];
-  },
-  // 千位符
-  intThousandth: function (val) {
-    if (!val) return val;
-    return val.toString().replace(/(\d)(?=(\d{3})+(?:\.\d+)?$)/g, '$1,');
-  },
-};
+  return {
+    obj2QueryString: obj2QueryString,
+    queryString2Obj: queryString2Obj,
+    json2ObjByKey: json2ObjByKey,
+  };
+})();
+
+// 陣列相關
+util.arr = (function () {
+  // slice (淺拷貝)
+  function slice(arr, start, end) {
+    return arr.slice(start || 0, end || arr.length);
+  }
+  // find (傳參考)
+  function find(arr, callback) {
+    return arr.find(callback);
+  }
+
+  function limit(arr, end) {
+    return slice(arr, 0, end);
+  }
+
+  function findObjByKey(arr, key, value) {
+    return find(arr, function (obj) {
+      return obj[key] === value;
+    });
+  }
+
+  return {
+    slice: slice,
+    limit: limit,
+    find: find,
+    findObjByKey: findObjByKey,
+  };
+})();
 
 // 日期相關
 util.date = (function () {
-  var week = ['日', '一', '二', '三', '四', '五', '六'];
+  const week = ['日', '一', '二', '三', '四', '五', '六'];
 
   function get(date) {
     return date ? new Date(date) : new Date();
@@ -211,9 +232,8 @@ util.date = (function () {
   }
 
   function format(date) {
-    var _d = get(date);
-
-    var obj = {
+    const _d = get(date);
+    const obj = {
       yyyy: _d.getFullYear(),
       mm: _d.getMonth() + 1,
       dd: _d.getDate(),
@@ -221,13 +241,11 @@ util.date = (function () {
       minu: _d.getMinutes(),
       day: week[_d.getDay()],
     };
-
     obj.ymd = '{yyyy}/{mm}/{dd}'.format({
       yyyy: obj.yyyy,
       mm: checkZero(obj.mm),
       dd: checkZero(obj.dd),
     });
-
     return obj;
   }
 
@@ -237,28 +255,45 @@ util.date = (function () {
   };
 })();
 
-// 瀏覽器相關
-util.browser = (function () {
-  function notSupportIE() {
-    var userAgent = window.navigator.userAgent;
-    var isIE = userAgent.indexOf('MSIE') > 0 || userAgent.indexOf('Trident/') > 0;
-    var isEdge = userAgent.indexOf('Edge/') > 0;
-
-    if (isIE || isEdge) {
-      util.modal.openError('notSupportIE', null, '您的瀏覽器過舊，請使用new Edge或Chrome以獲得更好的網站體驗。');
-    }
+// 字串相關
+util.str = (function () {
+  // 千位符
+  function thousandSeparator(val) {
+    if (!val) return val;
+    const parts = val.toString().split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return parts.join('.');
+    // return Number(val).toLocaleString();
   }
 
   return {
-    notSupportIE: notSupportIE,
+    thousandth: thousandSeparator,
   };
 })();
 
-// URL相關
-util.url = (function () {
-  var urlParams = util.convert.queryString2Obj(window.location.search.substr(1));
+// 數學相關
+util.math = (function () {
+  // 最大公約數
+  function getGCD(a, b) {
+    return b ? getGCD(b, a % b) : a;
+  }
+  // 最簡分數
+  function reduceFraction(numerator, denominator) {
+    const gcd = getGCD(numerator, denominator);
+    return [numerator / gcd, denominator / gcd];
+  }
 
-  function getParams(key) {
+  return {
+    getGCD: getGCD,
+    reduceFraction: reduceFraction,
+  };
+})();
+
+// BOM相關
+util.bom = (function () {
+  const urlParams = util.convert.queryString2Obj(window.location.search.substr(1));
+
+  function getUrlParams(key) {
     return key ? urlParams[key] : Object.assign({}, urlParams);
   }
 
@@ -267,38 +302,285 @@ util.url = (function () {
     window.history.replaceState(null, null, hash);
   }
 
+  function notSupportIE() {
+    const userAgent = window.navigator.userAgent;
+    const isIE = userAgent.indexOf('MSIE') > 0 || userAgent.indexOf('Trident/') > 0;
+    const isEdge = userAgent.indexOf('Edge/') > 0;
+
+    if (isIE || isEdge) {
+      util.modal.openError('notSupportIE', null, '您的瀏覽器過舊，請使用new Edge或Chrome以獲得更好的網站體驗。');
+    }
+  }
+
   function redirectMemberLogin() {
     // Do Something
     window.location = '/memberLogin';
   }
 
   return {
-    getParams: getParams,
+    getUrlParams: getUrlParams,
     updateHash: updateHash,
+    notSupportIE: notSupportIE,
     redirectMemberLogin: redirectMemberLogin,
+  };
+})();
+
+// DOM相關
+util.dom = (function () {
+  let styleSheet = null;
+
+  function addStyleSheet(styles) {
+    if (!styleSheet) {
+      styleSheet = document.createElement('style');
+      styleSheet.type = 'text/css';
+      document.head.appendChild(styleSheet);
+    }
+    styleSheet.innerText += styles;
+  }
+
+  function loadStyleSheet(href) {
+    const link = document.createElement('link');
+    link.href = href;
+    link.rel = 'stylesheet';
+    link.type = 'text/css';
+    document.head.appendChild(link);
+  }
+
+  function loadScript(src, onLoadFunc) {
+    const script = document.createElement('script');
+    script.src = src;
+    script.onload = function () {
+      if (onLoadFunc) onLoadFunc();
+    };
+    document.head.appendChild(script);
+  }
+
+  function nodeScriptClone(node) {
+    const script = document.createElement('script');
+    script.text = node.innerHTML;
+    for (let i = node.attributes.length - 1; i >= 0; i--) {
+      script.setAttribute(node.attributes[i].name, node.attributes[i].value);
+    }
+    return script;
+  }
+
+  function nodeScriptReplace(node) {
+    if (node.tagName === 'SCRIPT') {
+      node.parentNode.replaceChild(nodeScriptClone(node), node);
+    } else {
+      [].forEach.call(node.childNodes, function (children) {
+        nodeScriptReplace(children);
+      });
+    }
+    return node;
+  }
+
+  function wrap(elem, wrapper) {
+    wrapper = wrapper || document.createElement('div');
+    elem.parentNode.insertBefore(wrapper, elem); // insert wrapper before elem in the DOM tree
+    wrapper.appendChild(elem); // move elem into wrapper
+    return wrapper;
+  }
+
+  function insert(elem, parentNode) {
+    parentNode = parentNode || document.body; // 父節點 (預設 body)
+    const lastChild = parentNode.children[parentNode.children.length - 1]; // 尋找最後的子節點
+    const referenceNode = lastChild ? lastChild.nextElementSibling : null; // 判斷參考的節點
+    parentNode.insertBefore(elem, referenceNode);
+  }
+
+  function remove(elem, parentNode) {
+    parentNode = parentNode || elem.parentNode;
+    parentNode.removeChild(elem);
+  }
+
+  function removeChild(elem) {
+    while (elem.firstChild) {
+      remove(elem.firstChild, elem);
+    }
+  }
+
+  function getScrollPosition() {
+    const root = document.documentElement || document.body;
+    return {
+      x: window.pageXOffset || root.scrollLeft || 0,
+      y: window.pageYOffset || root.scrollTop || 0,
+    };
+  }
+
+  function getOffset(elem) {
+    const rect = elem.getBoundingClientRect();
+    const scroll = getScrollPosition();
+    return {
+      top: rect.top + scroll.y,
+      left: rect.left + scroll.x,
+    };
+  }
+
+  function regToggleBlock(elem, opts, defaultShow) {
+    opts = opts || {};
+    opts.ms = opts.ms || 300;
+    opts.showFunc = opts.showFunc || function () {};
+    opts.hideFunc = opts.hideFunc || function () {};
+
+    const showFunc = function () {
+      if (opts.activeClass) elem.classList.add(opts.activeClass);
+      opts.showFunc();
+    };
+    const hideFunc = function () {
+      if (opts.activeClass) elem.classList.remove(opts.activeClass);
+      opts.hideFunc();
+    };
+
+    if (!defaultShow) elem.style.display = 'none';
+
+    let timer = null;
+    return function (show) {
+      clearTimeout(timer);
+      if (show) {
+        if (elem.style.display === 'none') {
+          elem.style.display = '';
+          timer = setTimeout(function () {
+            showFunc();
+          }, 50);
+        } else {
+          showFunc();
+        }
+      } else {
+        hideFunc();
+
+        timer = setTimeout(function () {
+          timer = null;
+          elem.style.display = 'none';
+        }, opts.ms);
+      }
+    };
+  }
+
+  function regToggleFade(elem, opts, defaultShow) {
+    opts = opts || {};
+    opts.ms = opts.ms || 300;
+    opts.tf = opts.tf || 'ease';
+
+    let _style = window.getComputedStyle(elem, null);
+    let _origin = {
+      property: _style.transitionProperty,
+      duration: _style.transitionDuration,
+      delay: _style.transitionDelay,
+      tf: _style.transitionTimingFunction,
+    };
+
+    elem.style['transitionProperty'] = _origin.property + ',opacity,visibility';
+    elem.style['transitionDuration'] = _origin.duration + ',{0}ms,0s'.format(opts.ms);
+    elem.style['transitionTimingFunction'] = _origin.tf + ',{0},{0}'.format(opts.tf);
+
+    let hideClass = 'x-hide';
+    if (!defaultShow) elem.classList.add(hideClass);
+
+    opts.showFunc = function () {
+      elem.style['transitionDelay'] = _origin.delay + ',0s,0s';
+      elem.classList.remove(hideClass);
+    };
+    opts.hideFunc = function () {
+      elem.style['transitionDelay'] = _origin.delay + ',0s,{0}ms'.format(opts.ms);
+      elem.classList.add(hideClass);
+    };
+
+    return regToggleBlock(elem, opts, defaultShow);
+  }
+
+  addStyleSheet('.x-hide{opacity:0;visibility:hidden}');
+
+  return {
+    addStyleSheet: addStyleSheet,
+    loadStyleSheet: loadStyleSheet,
+    loadScript: loadScript,
+    nodeScriptReplace: nodeScriptReplace,
+    wrap: wrap,
+    insert: insert,
+    remove: remove,
+    removeChild: removeChild,
+    getScrollPosition: getScrollPosition,
+    getOffset: getOffset,
+    regToggleBlock: regToggleBlock,
+    regToggleFade: regToggleFade,
+  };
+})();
+
+// 圖片相關
+util.img = (function () {
+  const radioClasses = [];
+
+  function preload(img) {
+    const src = img.getAttribute('data-src');
+    if (!src) return;
+    img.src = src;
+    img.onerror = onLoad;
+    img.onload = onLoad;
+  }
+
+  function onError(img) {
+    img.onerror = null;
+    img.src = '/assets/images/nopic.jpg';
+  }
+
+  function onLoad(img) {
+    const parentNode = img.parentNode.clientHeight > 0 ? img.parentNode : img.parentNode.parentNode; // 找出父節點
+    const parentRadio = parentNode.clientHeight / parentNode.clientWidth; // 父節點比例
+    const targetRadio = img.clientHeight / img.clientWidth; // 圖片比例
+    // 比例小於父節點 套用高滿版 (預設寬滿版)
+    if (targetRadio < parentRadio) img.classList.add('portrait');
+    else img.classList.remove('portrait');
+  }
+
+  function addRadioStyle(x, y) {
+    let className = '';
+    const rf = util.math.reduceFraction(x, y);
+    const ratio = (rf[1] / rf[0]).toFixed(4) * 100;
+    if (!isNaN(ratio)) {
+      className = 'x-pic-{0}-{1}'.format(rf[0], rf[1]);
+      if (radioClasses.indexOf(className) === -1) {
+        radioClasses.push(className);
+        util.dom.addStyleSheet('.{0}::before{content:"";display:block;padding-top:{1}%}'.format(className, ratio));
+      }
+    }
+    return className;
+  }
+
+  const imgStyles = [
+    '.x-pic{position:relative;display:block;overflow:hidden}',
+    '.x-pic img{position:absolute;top:-100%;bottom:-100%;right:-100%;left:-100%;margin:auto;width:100%;height:auto}',
+    '.x-pic img.portrait{width:auto;height:100%}',
+  ].join('');
+  util.dom.addStyleSheet(imgStyles);
+
+  return {
+    preload: preload,
+    onError: onError,
+    onLoad: onLoad,
+    addRadioStyle: addRadioStyle,
   };
 })();
 
 // 處理控制相關
 util.processControl = (function () {
-  var set = {};
+  const set = {};
 
-  function get(name, prop) {
-    return new Promise(function (resolve, reject) {
+  function init(name, prop) {
+    return new Promise(function (resolve) {
       if (!set[name]) {
         set[name] = {
           count: 0,
           isProcessing: false,
         };
-        if (prop) Object.assign(set[name], prop);
+        Object.assign(set[name], prop);
       }
-
       resolve(set[name]);
     });
   }
 
   function check(name, prop) {
-    return get(name, prop).then(function (obj) {
+    return init(name, prop).then(function (obj) {
       return {
         canStart: canStart.bind(null, name),
         done: done.bind(null, name),
@@ -307,16 +589,15 @@ util.processControl = (function () {
   }
 
   function checkOnce(name) {
-    var prop = {
+    const prop = {
       limit: 1,
     };
     return check(name, prop);
   }
 
   function canStart(name, callback) {
-    var obj = set[name];
-
-    var pass = !obj.isProcessing;
+    const obj = set[name];
+    let pass = !obj.isProcessing;
 
     if (pass && obj.limit) {
       pass = obj.count < obj.limit;
@@ -338,13 +619,13 @@ util.processControl = (function () {
   }
 
   function leastLoading(ms) {
-    var pass = false;
+    let pass = false;
     setTimeout(function () {
       pass = true;
     }, ms || 500);
 
     return function (callback) {
-      var timer = setInterval(function () {
+      let timer = setInterval(function () {
         if (pass) {
           clearInterval(timer);
           callback();
@@ -367,7 +648,7 @@ util.processControl = (function () {
 
 // AJAX
 util.ajax = (function () {
-  var newXHR =
+  const newXHR =
     window.XMLHttpRequest && (window.location.protocol !== 'file:' || !window.ActiveXObject)
       ? function () {
           return new XMLHttpRequest();
@@ -380,7 +661,7 @@ util.ajax = (function () {
           }
         };
 
-  var forceRefresh = util.url.getParams('Refresh') === '1';
+  let forceRefresh = util.bom.getUrlParams('Refresh') === '1';
 
   function _ajax(opts) {
     return new Promise(function (resolve, reject) {
@@ -394,11 +675,11 @@ util.ajax = (function () {
       opts.method = opts.method || 'GET';
       opts.headers = opts.headers || { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' };
 
-      var url = opts.url;
-      var body = null;
+      let url = opts.url;
+      let body = null;
 
       if (opts.params) {
-        var params = opts.params;
+        let params = opts.params;
         if (typeof params === 'object') {
           params = util.convert.obj2QueryString(params);
         }
@@ -417,10 +698,10 @@ util.ajax = (function () {
         }
       }
 
-      var xhr = newXHR();
+      const xhr = newXHR();
       xhr.onload = function () {
         if (this.status >= 200 && this.status < 400) {
-          var res;
+          let res;
 
           try {
             res = JSON.parse(this.response);
@@ -455,13 +736,11 @@ util.ajax = (function () {
   }
 
   function ajax(method, url, params, successFunc, errorFunc) {
-    var opts = {
+    const promise = _ajax({
       method: method,
       url: url,
       params: params,
-    };
-
-    var promise = _ajax(opts);
+    });
 
     if (successFunc) {
       return promise.then(successFunc).catch(errorFunc || errorHandler());
@@ -470,23 +749,19 @@ util.ajax = (function () {
     return promise;
   }
 
-  var httpErrorTemp = {
+  const httpErrorTemp = {
     '401': function () {
-      util.modal.set['loginYet']();
+      util.modal.set['loginYet'].open();
     },
     other: function () {
-      util.modal.set['systemBusy']();
+      util.modal.set['systemBusy'].open();
     },
   };
 
   // 錯誤處理
   function errorHandler(customError) {
     return function (err) {
-      var httpError = httpErrorTemp;
-
-      if (customError) {
-        httpError = Object.assign({}, httpError, customError);
-      }
+      const httpError = Object.assign({}, httpErrorTemp, customError);
 
       if (httpError[err.status]) {
         httpError[err.status]();
@@ -503,243 +778,22 @@ util.ajax = (function () {
   };
 })();
 
-// DOM相關
-util.dom = (function () {
-  var styleSheet = null;
-
-  function addStyleSheet(styles) {
-    if (!styleSheet) {
-      styleSheet = document.createElement('style');
-      styleSheet.type = 'text/css';
-      document.head.appendChild(styleSheet);
-    }
-    styleSheet.innerText += styles;
-  }
-
-  function loadStyleSheet(href) {
-    var stylesheet = document.createElement('link');
-    stylesheet.href = href;
-    stylesheet.rel = 'stylesheet';
-    stylesheet.type = 'text/css';
-    document.head.appendChild(stylesheet);
-  }
-
-  function loadScript(src, onLoadFunc) {
-    var script = document.createElement('script');
-    script.onload = function () {
-      if (onLoadFunc) onLoadFunc();
-    };
-    script.src = src;
-    document.head.appendChild(script);
-  }
-
-  function nodeScriptReplace(node) {
-    if (node.tagName === 'SCRIPT') {
-      node.parentNode.replaceChild(nodeScriptClone(node), node);
-    } else {
-      [].forEach.call(node.childNodes, function (children) {
-        nodeScriptReplace(children);
-      });
-    }
-    return node;
-  }
-
-  function nodeScriptClone(node) {
-    var script = document.createElement('script');
-    script.text = node.innerHTML;
-    for (var i = node.attributes.length - 1; i >= 0; i--) {
-      script.setAttribute(node.attributes[i].name, node.attributes[i].value);
-    }
-    return script;
-  }
-
-  function wrap(ele, wrapper) {
-    wrapper = wrapper || document.createElement('div');
-    ele.parentNode.insertBefore(wrapper, ele);
-    wrapper.appendChild(ele);
-  }
-
-  function getScrollPosition() {
-    var root = document.documentElement || document.body;
-    return {
-      x: window.pageXOffset || root.scrollLeft || 0,
-      y: window.pageYOffset || root.scrollTop || 0,
-    };
-  }
-
-  function getOffset(ele) {
-    var rect = ele.getBoundingClientRect(),
-      scroll = getScrollPosition();
-    return {
-      top: rect.top + scroll.y,
-      left: rect.left + scroll.x,
-    };
-  }
-
-  function regToggleBlock(ele, opts, defaultShow) {
-    var opts = opts || {};
-    opts.ms = opts.ms || 300;
-
-    var showFunc = function () {
-      if (opts.activeClass) ele.classList.add(opts.activeClass);
-      if (opts.showFunc) opts.showFunc();
-    };
-    var hideFunc = function () {
-      if (opts.activeClass) ele.classList.remove(opts.activeClass);
-      if (opts.hideFunc) opts.hideFunc();
-    };
-
-    if (!defaultShow) {
-      ele.style.display = 'none';
-    }
-
-    var timeoutId = null;
-
-    return function (show) {
-      clearTimeout(timeoutId);
-      if (show) {
-        if (ele.style.display === 'none') {
-          ele.style.display = '';
-          timeoutId = setTimeout(function () {
-            showFunc();
-          }, 50);
-        } else {
-          showFunc();
-        }
-      } else {
-        hideFunc();
-
-        timeoutId = setTimeout(function () {
-          timeoutId = null;
-          ele.style.display = 'none';
-        }, opts.ms);
-      }
-    };
-  }
-
-  function regToggleFade(ele, opts, defaultShow) {
-    var opts = opts || {};
-    opts.ms = opts.ms || 300;
-    opts.tf = opts.tf || 'ease';
-
-    var _style = window.getComputedStyle(ele, null);
-    var _transition = {
-      property: _style.transitionProperty,
-      duration: _style.transitionDuration,
-      delay: _style.transitionDelay,
-      tf: _style.transitionTimingFunction,
-    };
-
-    ele.style['transitionProperty'] = _transition.property + ',opacity,visibility';
-    ele.style['transitionDuration'] = _transition.duration + ',{0}ms,0s'.format(opts.ms);
-    ele.style['transitionTimingFunction'] = _transition.tf + ',{0},{0}'.format(opts.tf);
-
-    var hideClass = 'x-hide';
-    if (!defaultShow) ele.classList.add(hideClass);
-
-    opts.showFunc = function () {
-      ele.style['transitionDelay'] = _transition.delay + ',0s,0s';
-      ele.classList.remove(hideClass);
-    };
-    opts.hideFunc = function () {
-      ele.style['transitionDelay'] = _transition.delay + ',0s,{0}ms'.format(opts.ms);
-      ele.classList.add(hideClass);
-    };
-
-    return regToggleBlock(ele, opts, defaultShow);
-  }
-
-  addStyleSheet('.x-hide{opacity:0;visibility:hidden}');
-
-  return {
-    addStyleSheet: addStyleSheet,
-    loadStyleSheet: loadStyleSheet,
-    loadScript: loadScript,
-    nodeScriptReplace: nodeScriptReplace,
-    wrap: wrap,
-    getScrollPosition: getScrollPosition,
-    getOffset: getOffset,
-    regToggleBlock: regToggleBlock,
-    regToggleFade: regToggleFade,
-  };
-})();
-
-// 圖片相關
-util.img = (function () {
-  var radioClasses = [];
-
-  function preload(img) {
-    var src = img.getAttribute('data-src');
-    if (!src) return;
-    img.src = src;
-    img.onerror = onLoad;
-    img.onload = onLoad;
-  }
-
-  function onError(img) {
-    img.onerror = null;
-    img.src = '/assets/images/nopic.jpg';
-  }
-
-  function onLoad(img) {
-    // 找出父節點
-    var parentNode = img.parentNode.clientHeight > 0 ? img.parentNode : img.parentNode.parentNode;
-    // 父節點比例
-    var parentRadio = parentNode.clientWidth / parentNode.clientHeight;
-    // 圖片比例
-    var targetRadio = img.clientWidth / img.clientHeight;
-    // 套用高滿版
-    if (parentRadio < targetRadio) img.classList.add('portrait');
-    else img.classList.remove('portrait');
-  }
-
-  function addRadioStyle(x, y) {
-    var className = '';
-    var rf = util.math.reduceFraction(x, y);
-    var ratio = (rf[1] / rf[0]).toFixed(4) * 100;
-
-    if (!isNaN(ratio)) {
-      className = 'x-pic-{0}-{1}'.format(rf[0], rf[1]);
-      if (radioClasses.indexOf(className) === -1) {
-        radioClasses.push(className);
-        util.dom.addStyleSheet('.{0}::before{content:"";display:block;padding-top:{1}%}'.format(className, ratio));
-      }
-    }
-
-    return className;
-  }
-
-  var imgStyles = [
-    '.x-pic{position:relative;display:block;overflow:hidden}',
-    '.x-pic img{position:absolute;top:-100%;bottom:-100%;right:-100%;left:-100%;margin:auto;width:100%;height:auto}',
-    '.x-pic img.portrait{width:auto;height:100%}',
-  ].join('');
-  util.dom.addStyleSheet(imgStyles);
-
-  return {
-    preload: preload,
-    onError: onError,
-    onLoad: onLoad,
-    addRadioStyle: addRadioStyle,
-  };
-})();
-
 // 錨點相關
 util.anchor = (function () {
-  var fixedHeader = null;
-  var wrapper = null;
+  let fixedHeader = null;
+  let wrapper = null;
 
   // 區塊錨點
-  var sections = [];
-  var sectionsScrollHandler = null;
+  const sections = [];
+  let sectionsScrollHandler = null;
 
   // 初始錨點定位
-  var defaultHash = null;
+  let defaultHash = null;
 
   if (window.location.hash) {
     defaultHash = window.location.hash;
     util.domReady(function () {
-      // util.url.updateHash();
+      // util.bom.updateHash();
       // _scrollTo(0, 0);
       untilDefault(0);
     });
@@ -750,18 +804,18 @@ util.anchor = (function () {
     util.processControl.check('anchor-untilDefault').then(function (process) {
       if (!process.canStart()) return false;
       // 每次最少執行秒數
-      var leastLoading = util.processControl.leastLoading(500);
+      const leastLoading = util.processControl.leastLoading(500);
       // 錨點目標
-      var anchorTarget = document.querySelector(defaultHash);
+      const anchorTarget = document.querySelector(defaultHash);
 
       // 直到錨點函式
-      var untilFunc = leastLoading.bind(null, function () {
-        var next = null,
-          anchorTargetTop = getElementTop(anchorTarget),
-          scrollY = util.dom.getScrollPosition().y;
+      const untilFunc = leastLoading.bind(null, function () {
+        let next = null;
+        const anchorTargetTop = getElementTop(anchorTarget);
+        const scrollY = util.dom.getScrollPosition().y;
 
-        // 如果錨點還沒生成 或還沒定位 (定位則停止)
-        if (anchorTargetTop !== scrollY) {
+        // 如果錨點還沒生成 或還沒定位 (定位則停止，容忍誤差)
+        if (util.pipe(Math.abs, Math.floor)(anchorTargetTop - scrollY) > 0) {
           // 再延遲執行一次
           next = function () {
             setTimeout(function () {
@@ -781,21 +835,21 @@ util.anchor = (function () {
     });
   }
 
-  function setFixedHeader(ele) {
-    if (ele) fixedHeader = ele;
+  function setFixedHeader(elem) {
+    if (elem) fixedHeader = elem;
   }
 
-  function setWrapper(ele) {
-    if (ele) wrapper = ele;
+  function setWrapper(elem) {
+    if (elem) wrapper = elem;
   }
 
-  function getElementTop(ele) {
-    if (!ele) return 0;
+  function getElementTop(elem) {
+    if (!elem) return 0;
 
-    //var scrollY = util.dom.getOffset(ele).top;
-    var scrollY = ele.offsetTop;
+    //let scrollY = util.dom.getOffset(elem).top;
+    let scrollY = elem.offsetTop;
 
-    if (ele.offsetParent) scrollY += ele.offsetParent.offsetTop;
+    if (elem.offsetParent) scrollY += elem.offsetParent.offsetTop;
     if (fixedHeader) scrollY -= fixedHeader.clientHeight;
     if (wrapper) scrollY -= wrapper.offsetTop;
 
@@ -807,38 +861,38 @@ util.anchor = (function () {
   }
 
   // TODO: 設定初始數據
-  function setSectionsData(ele) {
-    setSections(ele.id);
+  function setSectionsData(elem) {
+    setSections(elem.id);
   }
 
   // 區塊錨點處理
   function scrollHashHandler() {
-    var root = document.documentElement || document.body,
+    let root = document.documentElement || document.body,
       rootTop = root.scrollTop,
       rootBottom = rootTop + root.clientHeight,
       targetHash = null;
 
     // TODO: 可優化 記錄順序等...
-    for (var i = 0, sectionID; (sectionID = sections[i]); i++) {
-      var ele = document.getElementById(sectionID),
-        eleTop = getElementTop(ele),
-        eleBottom = eleTop + ele.clientHeight;
+    for (let i = 0, sectionID; (sectionID = sections[i]); i++) {
+      let elem = document.getElementById(sectionID),
+        elemTop = getElementTop(elem),
+        elemBottom = elemTop + elem.clientHeight;
 
       // TODO: 顯示條件可優化
-      if (eleTop < rootBottom && eleBottom > rootTop) {
+      if (elemTop < rootBottom && elemBottom > rootTop) {
         targetHash = sectionID;
         break;
       }
     }
 
-    util.url.updateHash(targetHash);
+    util.bom.updateHash(targetHash);
   }
 
   // 滾動處理
-  function scrollHandler(ele, duration, callback) {
-    if (!ele) return;
+  function scrollHandler(elem, duration, callback) {
+    if (!elem) return;
 
-    var anchor = ele.dataset.anchor || ele.getAttribute('href');
+    let anchor = elem.dataset.anchor || elem.getAttribute('href');
     if (anchor === '#') return;
 
     scrollTo(anchor, duration, callback);
@@ -848,7 +902,7 @@ util.anchor = (function () {
   function scrollTo(selector, duration, callback) {
     if (!selector) return;
 
-    var targetAnchor = document.querySelector(selector);
+    let targetAnchor = document.querySelector(selector);
     if (!targetAnchor) return;
 
     _scrollTo(getElementTop(targetAnchor), duration, callback);
@@ -856,7 +910,7 @@ util.anchor = (function () {
 
   // 滾動至 (位置, 持續時間, 回呼函式)
   function _scrollTo(to, duration, callback) {
-    var root = document.documentElement || document.body,
+    let root = document.documentElement || document.body,
       start = root.scrollTop,
       change = to - start,
       startDate = +new Date();
@@ -869,15 +923,15 @@ util.anchor = (function () {
 
     duration = duration || 500;
 
-    var easeInOutQuad = function (t, b, c, d) {
+    let easeInOutQuad = function (t, b, c, d) {
       t /= d / 2;
       if (t < 1) return (c / 2) * t * t + b;
       t -= 1;
       return (-c / 2) * (t * (t - 2) - 1) + b;
     };
-    var animateScroll = function () {
-      var currentDate = +new Date();
-      var currentTime = currentDate - startDate;
+    let animateScroll = function () {
+      let currentDate = +new Date();
+      let currentTime = currentDate - startDate;
       root.scrollTop = parseInt(easeInOutQuad(currentTime, start, change, duration), 10);
       if (currentTime < duration) {
         requestAnimationFrame(animateScroll);
@@ -891,7 +945,7 @@ util.anchor = (function () {
 
   // 處理錨點連結
   function processLinks(links, duration, callback) {
-    var anchorLinks = links || document.querySelectorAll('a[href^="#"]');
+    let anchorLinks = links || document.querySelectorAll('a[href^="#"]');
     [].forEach.call(anchorLinks, function (link) {
       link.addEventListener('click', function (e) {
         e.preventDefault();
@@ -902,7 +956,7 @@ util.anchor = (function () {
 
   // 處理錨點區塊
   function processSections(sections) {
-    var sectionEls = sections || document.querySelectorAll('section');
+    let sectionEls = sections || document.querySelectorAll('section');
     if (sectionEls && sectionEls.length > 0) {
       [].forEach.call(sectionEls, function (sectionEl) {
         util.anchor.setSectionsData(sectionEl, false);
@@ -932,21 +986,8 @@ util.anchor = (function () {
 
 // 模態框 (TODO: OOP)
 util.modal = (function () {
-  // 模態框
-  var modal = {};
-
-  // 模態框模板
-  var modalTemplate = {
-    // 目標
-    target: null,
-    // 關閉時的回呼函式
-    onClose: null,
-    // 確認時的回呼函式
-    onConfirm: null,
-  };
-
   // 模態框樣式名
-  var modalClasses = {
+  let modalClasses = {
     backdrop: 'x-modal__backdrop',
     backdrop_active: 'x-modal__backdrop--active',
     backdrop_error: 'x-modal__backdrop--error',
@@ -961,210 +1002,9 @@ util.modal = (function () {
     btn_cancel: 'x-modal__btn--cancel',
   };
 
-  // 內容模板
-  var contentTemplate = {
-    base: function (title, content, classes) {
-      title = title || '提示訊息';
-      classes = classes || {
-        header: 'text-center',
-      };
-      return [
-        "<div class='{1} {2}'><span>{0}</span></div>".format(title, modalClasses.contentHeader, classes.header || ''),
-        "<div class='{1} {2}'><span>{0}</span></div>".format(content, modalClasses.contentBody, classes.body || ''),
-      ].join('');
-    },
-  };
-
-  // 創建模態框 (名稱, 父節點, 回呼函式)
-  function create(name, parentNode, callback) {
-    if (modal[name]) return;
-
-    // 父節點 (預設 body)
-    if (!parentNode) parentNode = document.body;
-    // 尋找最後的子節點
-    var lastChild = parentNode.children[parentNode.children.length - 1];
-    // 判斷參考的節點
-    var referenceNode = lastChild ? lastChild.nextSibling : null;
-
-    // 容器(背景)
-    var wrap = document.createElement('div');
-    wrap.classList.add(modalClasses.backdrop);
-    wrap.style.display = 'none';
-    // 區塊(框)
-    var block = document.createElement('div');
-    block.classList.add(modalClasses.block);
-    // 內容
-    var content = document.createElement('div');
-    content.classList.add(modalClasses.content);
-    // 關閉按鈕
-    var closeBtn = document.createElement('div');
-    closeBtn.innerHTML = '&times;';
-    closeBtn.classList.add(modalClasses.closeBtn);
-
-    // 插入模態框
-    block.insertBefore(content, null);
-    block.insertBefore(closeBtn, content.nextElementSibling);
-    wrap.insertBefore(block, null);
-    parentNode.insertBefore(wrap, referenceNode);
-
-    // 監聽關閉
-    //wrap.addEventListener('click', function (e) {
-    //    e.stopPropagation();
-    //    switchActive(name, false);
-    //});
-    block.addEventListener('click', function (e) {
-      e.stopPropagation();
-    });
-    closeBtn.addEventListener('click', function (e) {
-      e.stopPropagation();
-      switchActive(name, false);
-    });
-
-    // 記錄模態框
-    modal[name] = Object.assign({}, modalTemplate, { target: wrap });
-    modal[name].switchActive = util.dom.regToggleFade(wrap, { activeClass: modalClasses.backdrop_active });
-
-    // 回呼函式
-    if (callback) callback();
-  }
-
-  // 切換開關 (名稱, 開/關)
-  function switchActive(name, flag) {
-    if (modal[name]) {
-      modal[name].switchActive(flag);
-      if (!flag) {
-        // 關閉時的回呼函式
-        if (modal[name].onClose) modal[name].onClose();
-      }
-    }
-  }
-
-  // 加入關閉按鈕的監聽 (名稱, 函式)
-  function addCloseHandler(name, func) {
-    if (modal[name]) {
-      var oldFunc = modal[name].onClose || function () {};
-      if (typeof oldFunc !== 'function') {
-        modal[name].onClose = func;
-      } else {
-        modal[name].onClose = function () {
-          oldFunc();
-          func();
-        };
-      }
-    }
-  }
-
-  // 初始內容 (名稱, HTML內容, 回呼函式)
-  function initContent(name, html, callback) {
-    if (modal[name]) {
-      // 重置內容
-      var content = modal[name].target.querySelector('.' + modalClasses.content);
-      if (content) content.innerHTML = html;
-      // 回呼函式
-      if (callback) callback();
-    } else {
-      // 創建模態框
-      create(name, null, function () {
-        initContent(name, html, callback);
-      });
-    }
-  }
-
-  // 關閉模態框 (名稱)
-  function close(name) {
-    // 指定
-    if (name) {
-      switchActive(name, false);
-    }
-    // 全部
-    else {
-      [].forEach.call(Object.keys(modal), function (name) {
-        switchActive(name, false);
-      });
-    }
-  }
-
-  // 開啟模態框 (名稱, HTML內容)
-  function open(name, html) {
-    if (html) {
-      // 初始內容
-      initContent(name, html, function () {
-        open(name);
-      });
-    } else {
-      switchActive(name, true);
-    }
-  }
-
-  // 打開通知模態框 (名稱, 標題, 訊息)
-  function openAlert(name, title, msg) {
-    if (modal[name]) {
-      open(name);
-    } else if (msg) {
-      initContent(name, contentTemplate['base'](title, msg), function () {
-        open(name);
-      });
-    }
-  }
-  // 打開錯誤模態框 (名稱, 標題, 訊息)
-  function openError(name, title, msg) {
-    if (modal[name]) {
-      open(name);
-    } else if (msg) {
-      initContent(name, contentTemplate['base'](title, msg), function () {
-        modal[name].target.classList.add(modalClasses.backdrop_error);
-        open(name);
-      });
-    }
-  }
-
-  // 打開確認模態框 (名稱, 標題, 訊息, 確認的回呼函式)
-  function openConfirm(name, title, msg, confirmFunc) {
-    if (modal[name]) {
-      open(name);
-    } else if (msg) {
-      initContent(name, contentTemplate['base'](title, msg), function () {
-        // footer
-        var footer = document.createElement('div');
-        footer.classList.add(modalClasses.contentFooter);
-        // confirmBtn
-        var confirmBtn = document.createElement('div');
-        confirmBtn.innerText = '確認';
-        confirmBtn.classList.add(modalClasses.btn);
-        confirmBtn.classList.add(modalClasses.btn_confirm);
-        // cancelBtn
-        var cancelBtn = document.createElement('div');
-        cancelBtn.innerText = '取消';
-        cancelBtn.classList.add(modalClasses.btn);
-        cancelBtn.classList.add(modalClasses.btn_cancel);
-
-        // 插入模態框
-        footer.insertBefore(confirmBtn, null);
-        footer.insertBefore(cancelBtn, confirmBtn.nextElementSibling);
-        var content = modal[name].target.querySelector('.' + modalClasses.content);
-        if (content) content.appendChild(footer);
-
-        modal[name].onConfirm = confirmFunc;
-
-        confirmBtn.addEventListener('click', function (e) {
-          e.stopPropagation();
-          switchActive(name, false);
-          if (modal[name].onConfirm) modal[name].onConfirm();
-        });
-
-        cancelBtn.addEventListener('click', function (e) {
-          e.stopPropagation();
-          switchActive(name, false);
-        });
-
-        open(name);
-      });
-    }
-  }
-
   // 初始模態框樣式
   (function initStyles(styles) {
-    var modalStyles = styles;
+    let modalStyles = styles;
     if (!modalStyles) {
       modalStyles = [
         '.{backdrop}{z-index:1040;position:fixed;top:0;right:0;bottom:0;left:0;width:100%;height:100%;display:block;background-color:rgba(18,18,18,.5)}',
@@ -1190,26 +1030,195 @@ util.modal = (function () {
     util.dom.addStyleSheet(modalStyles);
   })();
 
-  // 集合
-  var set = {
-    loginYet: function () {
-      openConfirm('loginYet', '尚未登入', '請先登入會員，再進行操作。<br/>立即導轉至登入頁?', util.url.redirectMemberLogin);
-    },
-    systemBusy: function () {
-      openError('systemBusy', null, '系統忙碌中，請稍後再試！');
+  function Modal(parentNode) {
+    console.log('new Modal');
+    this.init();
+    this.create(parentNode);
+  }
+  Modal.prototype.init = function () {
+    console.log('Modal.init()');
+    this.target = null; // 目標容器(背景)
+    this.block = null; // 區塊(框)
+    this.mainContent = null; // 顯示內容
+    this.closeBtn = null; // 關閉按鈕
+    this.switchFunc = null; // 切換顯示
+    this.onClose = null; // 關閉時的回呼函式
+    // this.blockClickFunc = null;
+  };
+  Modal.prototype.create = function (parentNode) {
+    console.log('Modal.create() - 0');
+    if (!this.target) {
+      console.log('Modal.create() - 1');
+      // 目標容器(背景)
+      this.target = document.createElement('div');
+      this.target.classList.add(modalClasses.backdrop);
+      // 區塊(框)
+      this.block = document.createElement('div');
+      this.block.classList.add(modalClasses.block);
+      // 顯示內容
+      this.mainContent = document.createElement('div');
+      this.mainContent.classList.add(modalClasses.content);
+      // 關閉按鈕
+      this.closeBtn = document.createElement('div');
+      this.closeBtn.innerHTML = '&times;';
+      this.closeBtn.classList.add(modalClasses.closeBtn);
+      // 組合模態框
+      this.block.insertBefore(this.mainContent, null);
+      this.block.insertBefore(this.closeBtn, this.mainContent.nextElementSibling);
+      this.target.insertBefore(this.block, null);
+      // 插入模態框
+      util.dom.insert(this.target, parentNode);
+
+      // 註冊切換顯示
+      this.switchFunc = util.dom.regToggleFade(this.target, { activeClass: modalClasses.backdrop_active }, false);
+
+      // 監聽關閉
+      this.closeBtn.addEventListener('click', this.close.bind(this));
+    }
+  };
+  Modal.prototype.destroy = function () {
+    console.log('Modal.destroy() - 0');
+    if (this.target) {
+      console.log('Modal.destroy() - 1');
+      // 刪除元素
+      util.dom.remove(this.target);
+      // 重置屬性
+      this.init();
+    }
+  };
+  Modal.prototype.close = function () {
+    console.log('Modal.close()');
+    this.switchFunc(false);
+    // 關閉時的回呼函式
+    if (this.onClose) this.onClose();
+  };
+  Modal.prototype.open = function () {
+    console.log('Modal.open()');
+    this.switchFunc(true);
+  };
+  Modal.prototype.addCloseHandler = function (func) {
+    console.log('Modal.addCloseHandler()');
+    let oldFunc = this.onClose || function () {};
+    if (typeof oldFunc !== 'function') {
+      this.onClose = func;
+    } else {
+      this.onClose = function () {
+        oldFunc();
+        func();
+      };
+    }
+  };
+  Modal.prototype.initContent = function (html) {
+    console.log('Modal.initContent()');
+    while (this.mainContent.firstChild) {
+      this.mainContent.removeChild(this.mainContent.firstChild);
+    }
+    this.mainContent.innerHTML = html;
+  };
+
+  // 內容模板
+  let contentTemplate = {
+    base: function (title, content, classes) {
+      title = title || '提示訊息';
+      classes = classes || {
+        header: 'text-center',
+      };
+      return [
+        "<div class='{1} {2}'><span>{0}</span></div>".format(title, modalClasses.contentHeader, classes.header || ''),
+        "<div class='{1} {2}'><span>{0}</span></div>".format(content, modalClasses.contentBody, classes.body || ''),
+      ].join('');
     },
   };
 
+  // 集合
+  let set = {};
+
+  function open(name) {
+    if (set[name]) set[name].open();
+  }
+
+  function fetch(name, parentNode) {
+    return new Promise(function (resolve, reject) {
+      if (!set[name]) set[name] = new Modal(parentNode);
+      resolve(set[name]);
+    });
+  }
+
+  function createAlert(name, title, msg) {
+    return fetch(name).then(function (modal) {
+      if (!modal.mainContent.firstChild && msg) {
+        let html = contentTemplate['base'](title, msg);
+        modal.initContent(html);
+      }
+
+      return modal;
+    });
+  }
+  function createError(name, title, msg) {
+    return fetch(name).then(function (modal) {
+      if (!modal.mainContent.firstChild && msg) {
+        let html = contentTemplate['base'](title, msg);
+        modal.initContent(html);
+
+        modal.target.classList.add(modalClasses.backdrop_error);
+      }
+
+      return modal;
+    });
+  }
+  function createConfirm(name, title, msg, confirmFunc, cancelFunc) {
+    return fetch(name).then(function (modal) {
+      if (!modal.mainContent.firstChild && msg) {
+        let html = contentTemplate['base'](title, msg);
+        modal.initContent(html);
+
+        // footer
+        let footer = document.createElement('div');
+        footer.classList.add(modalClasses.contentFooter);
+        // confirmBtn
+        let confirmBtn = document.createElement('div');
+        confirmBtn.innerText = '確認';
+        confirmBtn.classList.add(modalClasses.btn);
+        confirmBtn.classList.add(modalClasses.btn_confirm);
+        // cancelBtn
+        let cancelBtn = document.createElement('div');
+        cancelBtn.innerText = '取消';
+        cancelBtn.classList.add(modalClasses.btn);
+        cancelBtn.classList.add(modalClasses.btn_cancel);
+        // 組合
+        footer.insertBefore(confirmBtn, null);
+        footer.insertBefore(cancelBtn, confirmBtn.nextElementSibling);
+        // 插入模態框
+        util.dom.insert(footer, modal.mainContent);
+
+        // 監聽
+        confirmBtn.addEventListener('click', function () {
+          if (confirmFunc) confirmFunc();
+          modal.close();
+        });
+        cancelBtn.addEventListener('click', function () {
+          if (cancelFunc) cancelFunc();
+          modal.close();
+        });
+      }
+
+      return modal;
+    });
+  }
+
+  createConfirm('loginYet', '尚未登入', '請先登入會員，再進行操作。<br/>立即導轉至登入頁?', function () {
+    console.log('xx');
+  });
+  createAlert('systemBusy', null, '系統忙碌中，請稍後再試！');
+
   return {
-    modalClasses: modalClasses,
     contentTemplate: contentTemplate,
-    addCloseHandler: addCloseHandler,
-    close: close,
-    open: open,
-    openAlert: openAlert,
-    openError: openError,
-    openConfirm: openConfirm,
     set: set,
+    open: open,
+    fetch: fetch,
+    createAlert: createAlert,
+    createError: createError,
+    createConfirm: createConfirm,
   };
 })();
 
@@ -1217,12 +1226,12 @@ util.modal = (function () {
 // 創建同步函式 (Generator Function)
 util.createAsyncFunction = function (fn) {
     return function () {
-        var gen = fn.apply(this, arguments);
+        let gen = fn.apply(this, arguments);
         return new Promise(function (resolve, reject) {
             function step(key, arg) {
                 try {
-                    var info = gen[key](arg);
-                    var value = info.value;
+                    let info = gen[key](arg);
+                    let value = info.value;
                 } catch (error) {
                     reject(error);
                     return;
@@ -1245,35 +1254,3 @@ util.createAsyncFunction = function (fn) {
     };
 };
 */
-
-// Polyfill - check support(simple)
-(function () {
-  // Object.assign
-  if (typeof Object.assign !== 'function') {
-    Object.assign = function (target, varArgs) {
-      // .length of function is 2
-      'use strict';
-      if (target == null) {
-        // TypeError if undefined or null
-        throw new TypeError('Cannot convert undefined or null to object');
-      }
-
-      var to = Object(target);
-
-      for (var index = 1; index < arguments.length; index++) {
-        var nextSource = arguments[index];
-
-        if (nextSource != null) {
-          // Skip over if undefined or null
-          for (var nextKey in nextSource) {
-            // Avoid bugs when hasOwnProperty is shadowed
-            if (Object.prototype.hasOwnProperty.call(nextSource, nextKey)) {
-              to[nextKey] = nextSource[nextKey];
-            }
-          }
-        }
-      }
-      return to;
-    };
-  }
-})();

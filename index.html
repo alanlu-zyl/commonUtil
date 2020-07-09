@@ -8,162 +8,308 @@
     <script defer src="https://polyfill.io/v3/polyfill.min.js?features=Promise%2CPromise.prototype.finally"></script>
     <script defer src="./assets/js/commonUtil.js"></script>
     <script defer src="./assets/js/home.js"></script>
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.0.0/styles/default.min.css" />
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.0.0/highlight.min.js"></script>
+    <script>
+      hljs.initHighlightingOnLoad();
+    </script>
   </head>
   <body>
     <div id="app">
-      <header>
-        <h1>CommonUtil Demo</h1>
-        <nav>
-          <ul>
-            <li><a href="#default">(Default)</a></li>
-            <li><a href="#array">陣列相關 (Array)</a></li>
-            <li><a href="#obj">物件相關 (Obj)</a></li>
-            <li><a href="#convert">轉換相關 (Convert)</a></li>
-            <li><a href="#math">數學相關 (Math)</a></li>
-            <li><a href="#date">日期相關 (Date)</a></li>
-            <li><a href="#browser">瀏覽器相關 (Browser)</a></li>
-            <li><a href="#url">URL相關 (Url)</a></li>
-            <li><a href="#processControl">處理控制相關 (ProcessControl)</a></li>
-            <li><a href="#ajax">AJAX (Ajax)</a></li>
-            <li><a href="#dom">DOM相關 (Dom)</a></li>
-            <li><a href="#img">圖片相關 (Img)</a></li>
-            <li><a href="#anchor">錨點相關 (Anchor)</a></li>
-            <li><a href="#modal">模態框 (Modal)</a></li>
-          </ul>
-        </nav>
-      </header>
+      <nav>
+        <h1>CommonUtil</h1>
+        <ul>
+          <li>
+            <a href="#default">(Default)</a>
+            <ul>
+              <li><a href="#default-domReady">domReady</a></li>
+              <li><a href="#default-windowReady">windowReady</a></li>
+              <li><a href="#default-throttle">throttle</a></li>
+              <li><a href="#default-debounce">debounce</a></li>
+              <li><a href="#default-pipe">pipe</a></li>
+              <li><a href="#default-deepCopy">deepCopy</a></li>
+              <li><a href="#default-newEnum">newEnum</a></li>
+            </ul>
+          </li>
+          <li>
+            <a href="#convert">轉換相關 (Convert)</a>
+            <ul>
+              <li><a href="#convert-obj2QueryString">obj2QueryString</a></li>
+              <li><a href="#convert-queryString2Obj">queryString2Obj</a></li>
+              <li><a href="#convert-json2ObjByKey">json2ObjByKey</a></li>
+            </ul>
+          </li>
+          <li>
+            <a href="#array">陣列相關 (Array)</a>
+            <ul>
+              <li><a href="#array-slice">slice</a></li>
+              <li><a href="#array-limit">limit</a></li>
+              <li><a href="#array-find">find</a></li>
+              <li><a href="#array-findObjByKey">findObjByKey</a></li>
+            </ul>
+          </li>
+          <li><a href="#date">日期相關 (Date)</a></li>
+          <li><a href="#string">字串相關 (String)</a></li>
+          <li><a href="#math">數學相關 (Math)</a></li>
+          <li><a href="#bom">BOM相關 (BOM)</a></li>
+          <li><a href="#dom">DOM相關 (DOM)</a></li>
+          <li><a href="#img">圖片相關 (Img)</a></li>
+          <li><a href="#processControl">處理控制相關 (ProcessControl)</a></li>
+          <li><a href="#ajax">AJAX (Ajax)</a></li>
+          <li><a href="#anchor">錨點相關 (Anchor)</a></li>
+          <li><a href="#modal">模態框 (Modal)</a></li>
+        </ul>
+      </nav>
+
       <main>
         <section id="default">
           <h2><a href="#default">Default</a></h2>
           <div>
-            <h3>util.domReady</h3>
-            <h3>util.windowReady</h3>
-            <h3>util.throttle</h3>
-            <h3>util.debounce</h3>
-            <h3>util.piper</h3>
+            <div id="default-domReady">
+              <h3>util.domReady</h3>
+              <pre><code class="js">// util.domReady(callback)
+util.domReady().then(function () {
+    console.log('domReady')
+});
+// or
+// util.domReady(function () {
+//     console.log('domReady')
+// });
+</code></pre>
+            </div>
+            <div id="default-windowReady">
+              <h3>util.windowReady</h3>
+              <pre><code class="js">// util.windowReady(callback)
+util.windowReady().then(function () {
+    console.log('windowReady')
+});
+// or
+// util.windowReady(function () {
+//     console.log('windowReady')
+// });
+</code></pre>
+            </div>
+            <div id="default-throttle">
+              <h3>util.throttle</h3>
+              <pre><code class="js">// util.throttle(func, mustRun = 150, delay = 100)
+var throttled = util.throttle(function(e){
+    e.target.nextElementSibling.innerHTML = e.target.value;
+}, 1000, 500);
+// then
+document.getElementById('txt-throttle').addEventListener('input', throttled);
+// remove
+// document.getElementById('txt-throttle').removeEventListener('input', throttled);
+</code></pre>
+              <input type="text" name="" id="txt-throttle" /><span></span>
+            </div>
+            <div id="default-debounce">
+              <h3>util.debounce</h3>
+              <pre><code class="js">// util.debounce(func, delay = 100)
+var debounced = util.debounce(function(e){
+    e.target.nextElementSibling.innerHTML = e.target.value;
+}, 500);
+// then
+document.getElementById('txt-debounce').addEventListener('input', debounced);
+// remove
+// document.getElementById('txt-debounce').removeEventListener('input', debounced);
+</code></pre>
+              <input type="text" name="" id="txt-debounce" /><span></span>
+            </div>
+            <div id="default-pipe">
+              <h3>util.pipe</h3>
+              <pre><code class="js">// util.pipe(/* functions */)(/* arguments */)
+/* 多參數只作用在首個函式，其餘接收前個函式的回傳值 */
+var func = util.pipe(
+    Math.max,
+    function(x){ return x + 5 }
+);
+// then
+console.log(func(5)); // 10
+console.log(func(5, 9)); // 14
+</code></pre>
+            </div>
+          </div>
+          <div id="default-deepCopy">
             <h3>util.deepCopy</h3>
+            <pre><code class="js">// util.deepCopy(obj)
+var obj1 = { a:1, b:2, c: { d:1, f: 2} };
+var obj2 = util.deepCopy(obj1);
+console.log(obj1 == obj2, obj1.c == obj2.c); // false false
+
+// 補充: Object.assign 只有淺拷貝
+var obj3 = Object.assign({}, obj1);
+console.log(obj1 == obj3, obj1.c == obj3.c); // false true
+</code></pre>
+          </div>
+          <div id="default-newEnum">
             <h3>util.newEnum</h3>
-          </div>
-        </section>
-        <section id="array">
-          <h2><a href="#array">Array</a></h2>
-          <div>
-            <h3>util.array.limit</h3>
-          </div>
-        </section>
-        <section id="obj">
-          <h2><a href="#obj">Obj</a></h2>
-          <div>
-            <h3>util.obj.find</h3>
+            <pre><code class="js">// util.newEnum(seed)
+var s1 = util.newEnum({
+    SUCCESS:1,
+    FAILED :0,
+});
+console.log(s1.SUCCESS, s1.FAILED); // 1 0
+console.log(s1.prop[1]); // {value: 1, name: "success", code: "S"}
+// or
+var s2 = util.newEnum({
+    SUCCESS: [1, '成功', 'OK'],
+    FAILED : [0, '失敗', 'QQ'],
+});
+console.log(s2.SUCCESS, s2.FAILED); // 1 0
+console.log(s2.prop[s2.SUCCESS]); // {value: 1, name: "成功", code: "OK"}
+</code></pre>
           </div>
         </section>
         <section id="convert">
           <h2><a href="#convert">Convert</a></h2>
           <div>
-            <h3>util.convert.obj2QueryString</h3>
-            <h3>util.convert.queryString2Obj</h3>
-            <h3>util.convert.json2ObjByKey</h3>
+            <div id="convert-obj2QueryString">
+              <h3>util.convert.obj2QueryString</h3>
+              <pre><code class="js">// util.convert.obj2QueryString(params)
+var params = {
+    a: 1,
+    b: 'hello word'
+};
+console.log(util.convert.obj2QueryString(params)); // a=1&b=hello%20word
+</code></pre>
+            </div>
+            <div id="convert-queryString2Obj">
+              <h3>util.convert.queryString2Obj</h3>
+              <pre><code class="js">// util.convert.queryString2Obj(str)
+var str = 'a=1&b=hello%20word';
+console.log(util.convert.queryString2Obj(str)); // {a: "1", b: "hello word"}
+</code></pre>
+            </div>
+            <div id="convert-json2ObjByKey">
+              <h3>util.convert.json2ObjByKey</h3>
+              <pre><code class="js">// util.convert.json2ObjByKey(json, key)
+var json = [
+    { id: 1, value: 'a', text:'a' },
+    { id: 2, value: 'b' },
+    { id: 1, value: 'c', other:'d' },
+]
+var obj = util.convert.json2ObjByKey(json, 'id')
+console.log(obj[1]); // {id: 1, value: "c", text: "a", other: "d"}
+</code></pre>
+            </div>
           </div>
         </section>
-        <section id="math">
-          <h2><a href="#math">Math</a></h2>
+        <section id="array">
+          <h2><a href="#array">Array</a></h2>
           <div>
-            <h3>util.math.reduceFraction</h3>
-            <h3>util.math.intThousandth</h3>
+            <div id="array-slice">
+              <h3>util.arr.slice</h3>
+            </div>
+            <div id="array-limit">
+              <h3>util.arr.limit</h3>
+            </div>
+            <div id="array-find">
+              <h3>util.arr.find</h3>
+            </div>
+            <div id="array-findObjByKey">
+              <h3>util.arr.findObjByKey</h3>
+            </div>
           </div>
         </section>
         <section id="date">
           <h2><a href="#date">Date</a></h2>
           <div>
-            <h3>util.date.get</h3>
-            <h3>util.date.format</h3>
+            <div><h3>util.date.get</h3></div>
+            <div><h3>util.date.format</h3></div>
           </div>
         </section>
-        <section id="browser">
-          <h2><a href="#browser">Browser</a></h2>
+        <section id="string">
+          <h2><a href="#string">String</a></h2>
           <div>
-            <h3>util.browser.notSupportIE</h3>
+            <div><h3>util.str.thousandth</h3></div>
           </div>
         </section>
-        <section id="url">
-          <h2><a href="#url">Url</a></h2>
+        <section id="math">
+          <h2><a href="#math">Math</a></h2>
           <div>
-            <h3>util.url.getParams</h3>
-            <h3>util.url.updateHash</h3>
-            <h3>util.url.redirectMemberLogin</h3>
+            <div><h3>util.math.getGCD</h3></div>
+            <div><h3>util.math.reduceFraction</h3></div>
           </div>
         </section>
-        <section id="processControl">
-          <h2><a href="#processControl">ProcessControl</a></h2>
+        <section id="bom">
+          <h2><a href="#bom">BOM</a></h2>
           <div>
-            <h3>util.processControl.showLog</h3>
-            <h3>util.processControl.check</h3>
-            <h3>util.processControl.checkOnce</h3>
-            <h3>util.processControl.leastLoading</h3>
-          </div>
-        </section>
-        <section id="ajax">
-          <h2><a href="#ajax">Ajax</a></h2>
-          <div>
-            <h3>util.ajax.errorHandler</h3>
-            <h3>util.ajax.get</h3>
-            <h3>util.ajax.post</h3>
+            <div><h3>util.bom.getUrlParams</h3></div>
+            <div><h3>util.bom.updateHash</h3></div>
+            <div><h3>util.bom.notSupportIE</h3></div>
+            <div><h3>util.bom.redirectMemberLogin</h3></div>
           </div>
         </section>
         <section id="dom">
           <h2><a href="#dom">Dom</a></h2>
           <div>
-            <h3>util.dom.addStyleSheet</h3>
-            <h3>util.dom.loadStyleSheet</h3>
-            <h3>util.dom.loadScript</h3>
-            <h3>util.dom.nodeScriptReplace</h3>
-            <h3>util.dom.wrap</h3>
-            <h3>util.dom.getScrollPosition</h3>
-            <h3>util.dom.getOffset</h3>
-            <h3>util.dom.regToggleBlock</h3>
-            <h3>util.dom.regToggleFade</h3>
+            <div><h3>util.dom.addStyleSheet</h3></div>
+            <div><h3>util.dom.loadStyleSheet</h3></div>
+            <div><h3>util.dom.loadScript</h3></div>
+            <div><h3>util.dom.nodeScriptReplace</h3></div>
+            <div><h3>util.dom.wrap</h3></div>
+            <div><h3>util.dom.getScrollPosition</h3></div>
+            <div><h3>util.dom.getOffset</h3></div>
+            <div><h3>util.dom.regToggleBlock</h3></div>
+            <div><h3>util.dom.regToggleFade</h3></div>
           </div>
         </section>
         <section id="img">
           <h2><a href="#img">Img</a></h2>
           <div>
-            <h3>util.img.preload</h3>
-            <h3>util.img.onError</h3>
-            <h3>util.img.onLoad</h3>
-            <h3>util.img.addRadioStyle</h3>
+            <div><h3>util.img.preload</h3></div>
+            <div><h3>util.img.onError</h3></div>
+            <div><h3>util.img.onLoad</h3></div>
+            <div><h3>util.img.addRadioStyle</h3></div>
+          </div>
+        </section>
+        <section id="processControl">
+          <h2><a href="#processControl">ProcessControl</a></h2>
+          <div>
+            <div><h3>util.processControl.showLog</h3></div>
+            <div><h3>util.processControl.check</h3></div>
+            <div><h3>util.processControl.checkOnce</h3></div>
+            <div><h3>util.processControl.leastLoading</h3></div>
+          </div>
+        </section>
+        <section id="ajax">
+          <h2><a href="#ajax">Ajax</a></h2>
+          <div>
+            <div><h3>util.ajax.errorHandler</h3></div>
+            <div><h3>util.ajax.get</h3></div>
+            <div><h3>util.ajax.post</h3></div>
           </div>
         </section>
         <section id="anchor">
           <h2><a href="#anchor">Anchor</a></h2>
           <div>
-            <h3>util.anchor.setWrapper</h3>
-            <h3>util.anchor.setFixedHeader</h3>
-            <h3>util.anchor.setSections</h3>
-            <h3>util.anchor.setSectionsData</h3>
-            <h3>util.anchor.scrollHashHandler</h3>
-            <h3>util.anchor.scrollHandler</h3>
-            <h3>util.anchor.scrollTo</h3>
-            <h3>util.anchor.scrollTop</h3>
-            <h3>util.anchor.untilDefalut</h3>
-            <h3>util.anchor.processLinks</h3>
-            <h3>util.anchor.processSections</h3>
+            <div><h3>util.anchor.setWrapper</h3></div>
+            <div><h3>util.anchor.setFixedHeader</h3></div>
+            <div><h3>util.anchor.setSections</h3></div>
+            <div><h3>util.anchor.setSectionsData</h3></div>
+            <div><h3>util.anchor.scrollHashHandler</h3></div>
+            <div><h3>util.anchor.scrollHandler</h3></div>
+            <div><h3>util.anchor.scrollTo</h3></div>
+            <div><h3>util.anchor.scrollTop</h3></div>
+            <div><h3>util.anchor.untilDefault</h3></div>
+            <div><h3>util.anchor.processLinks</h3></div>
+            <div><h3>util.anchor.processSections</h3></div>
           </div>
         </section>
         <section id="modal">
           <h2><a href="#modal">Modal</a></h2>
           <div>
-            <h3>util.modal.modalClasses</h3>
-            <h3>util.modal.contentTemplate</h3>
-            <h3>util.modal.addCloseHandler</h3>
-            <h3>util.modal.close</h3>
-            <h3>util.modal.open</h3>
-            <h3>util.modal.openAlert</h3>
-            <h3>util.modal.openError</h3>
-            <h3>util.modal.openConfirm</h3>
-            <h3>util.modal.set</h3>
+            <div><h3>util.modal.contentTemplate</h3></div>
+            <div><h3>util.modal.set</h3></div>
+            <div><h3>util.modal.open</h3></div>
+            <div><h3>util.modal.fetch</h3></div>
+            <div><h3>util.modal.createAlert</h3></div>
+            <div><h3>util.modal.createError</h3></div>
+            <div><h3>util.modal.createConfirm</h3></div>
           </div>
         </section>
       </main>
+
       <div id="goTop"></div>
     </div>
   </body>
