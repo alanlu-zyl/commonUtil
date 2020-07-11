@@ -53,24 +53,12 @@
 // Util
 const util = {
   domReady: function (callback) {
-    return new Promise(function (resolve) {
-      const func = function () {
-        if (callback) callback();
-        resolve();
-      };
-      if (document.readyState !== 'loading') func();
-      else document.addEventListener('DOMContentLoaded', func);
-    });
+    if (document.readyState !== 'loading') callback();
+    else document.addEventListener('DOMContentLoaded', callback);
   },
   windowReady: function (callback) {
-    return new Promise(function (resolve) {
-      const func = function () {
-        if (callback) callback();
-        resolve();
-      };
-      if (document.readyState === 'complete') func();
-      else window.addEventListener('load', func);
-    });
+    if (document.readyState === 'complete') callback();
+    else window.addEventListener('load', callback);
   },
   throttle: function (func, mustRun, delay) {
     mustRun = mustRun || 150;
@@ -150,6 +138,15 @@ const util = {
       return acc;
     }, {});
     return Object.freeze ? Object.freeze(seed) : seed;
+  },
+  addFunc: function (targetFunc, newFunc) {
+    const oldFunc = targetFunc || function () {};
+    return typeof oldFunc !== 'function'
+      ? newFunc
+      : function () {
+          oldFunc();
+          newFunc();
+        };
   },
 };
 
@@ -267,7 +264,7 @@ util.str = (function () {
   }
 
   return {
-    thousandth: thousandSeparator,
+    thousandSeparator: thousandSeparator,
   };
 })();
 
@@ -375,28 +372,43 @@ util.dom = (function () {
     return node;
   }
 
-  function wrap(elem, wrapper) {
-    wrapper = wrapper || document.createElement('div');
-    elem.parentNode.insertBefore(wrapper, elem); // insert wrapper before elem in the DOM tree
-    wrapper.appendChild(elem); // move elem into wrapper
-    return wrapper;
+  function createElem(tag, html, opts) {
+    const elem = document.createElement(tag);
+    if (html) elem.innerHTML = html;
+    if (opts) Object.assign(elem, opts);
+    return elem;
   }
 
-  function insert(elem, parentNode) {
-    parentNode = parentNode || document.body; // 父節點 (預設 body)
-    const lastChild = parentNode.children[parentNode.children.length - 1]; // 尋找最後的子節點
-    const referenceNode = lastChild ? lastChild.nextElementSibling : null; // 判斷參考的節點
-    parentNode.insertBefore(elem, referenceNode);
+  function wrap(elem, parentNode) {
+    parentNode = parentNode || document.createElement('div');
+    if (elem.parentNode) elem.parentNode.insertBefore(parentNode, elem);
+    parentNode.appendChild(elem);
+    return parentNode;
+  }
+
+  function insert(parentNode, elem, referenceNode) {
+    return (parentNode || document.body).insertBefore(elem, referenceNode);
+  }
+  function insertPrev(referenceNode, elem) {
+    return insert(referenceNode.parentNode, elem, referenceNode);
+  }
+  function insertNext(referenceNode, elem) {
+    return insert(referenceNode.parentNode, elem, referenceNode.nextSibling);
+  }
+  function insertFirst(parentNode, elem) {
+    return insert(parentNode, elem, parentNode.firstChild);
+  }
+  function insertLast(parentNode, elem) {
+    return insert(parentNode, elem, parentNode.lastChild ? parentNode.lastChild.nextSibling : null);
   }
 
   function remove(elem, parentNode) {
     parentNode = parentNode || elem.parentNode;
     parentNode.removeChild(elem);
   }
-
-  function removeChild(elem) {
-    while (elem.firstChild) {
-      remove(elem.firstChild, elem);
+  function removeChild(parentNode) {
+    while (parentNode.firstChild) {
+      remove(parentNode.firstChild, parentNode);
     }
   }
 
@@ -420,26 +432,27 @@ util.dom = (function () {
   function regToggleBlock(elem, opts, defaultShow) {
     opts = opts || {};
     opts.ms = opts.ms || 300;
-    opts.showFunc = opts.showFunc || function () {};
-    opts.hideFunc = opts.hideFunc || function () {};
 
-    const showFunc = function () {
+    const showFunc = util.addFunc(opts.showFunc, function () {
       if (opts.activeClass) elem.classList.add(opts.activeClass);
-      opts.showFunc();
-    };
-    const hideFunc = function () {
+      if (opts.hideClass) elem.classList.remove(opts.hideClass);
+    });
+    const hideFunc = util.addFunc(opts.hideFunc, function () {
       if (opts.activeClass) elem.classList.remove(opts.activeClass);
-      opts.hideFunc();
-    };
+      if (opts.hideClass) elem.classList.add(opts.hideClass);
+    });
 
-    if (!defaultShow) elem.style.display = 'none';
+    if (!defaultShow) {
+      elem.classList.add('x-hide');
+      if (opts.hideClass) elem.classList.add(opts.hideClass);
+    }
 
     let timer = null;
     return function (show) {
       clearTimeout(timer);
       if (show) {
-        if (elem.style.display === 'none') {
-          elem.style.display = '';
+        if (elem.classList.contains('x-hide')) {
+          elem.classList.remove('x-hide');
           timer = setTimeout(function () {
             showFunc();
           }, 50);
@@ -451,7 +464,7 @@ util.dom = (function () {
 
         timer = setTimeout(function () {
           timer = null;
-          elem.style.display = 'none';
+          elem.classList.add('x-hide');
         }, opts.ms);
       }
     };
@@ -461,49 +474,85 @@ util.dom = (function () {
     opts = opts || {};
     opts.ms = opts.ms || 300;
     opts.tf = opts.tf || 'ease';
+    opts.hideClass = 'x-hideFade';
 
-    let _style = window.getComputedStyle(elem, null);
-    let _origin = {
-      property: _style.transitionProperty,
-      duration: _style.transitionDuration,
+    const _style = window.getComputedStyle(elem, null);
+    const _origin = {
       delay: _style.transitionDelay,
-      tf: _style.transitionTimingFunction,
     };
+    const hasDefaultTransition = _style.transition !== 'all 0s ease 0s';
+    if (hasDefaultTransition) {
+      elem.style['transition'] = _style.transition + ',opacity {0}ms {1},visibility 0s {1}'.format(opts.ms, opts.tf);
+    } else {
+      elem.style['transition'] = 'opacity {0}ms {1},visibility 0s {1}'.format(opts.ms, opts.tf);
+    }
 
-    elem.style['transitionProperty'] = _origin.property + ',opacity,visibility';
-    elem.style['transitionDuration'] = _origin.duration + ',{0}ms,0s'.format(opts.ms);
-    elem.style['transitionTimingFunction'] = _origin.tf + ',{0},{0}'.format(opts.tf);
-
-    let hideClass = 'x-hide';
-    if (!defaultShow) elem.classList.add(hideClass);
-
-    opts.showFunc = function () {
-      elem.style['transitionDelay'] = _origin.delay + ',0s,0s';
-      elem.classList.remove(hideClass);
-    };
-    opts.hideFunc = function () {
-      elem.style['transitionDelay'] = _origin.delay + ',0s,{0}ms'.format(opts.ms);
-      elem.classList.add(hideClass);
-    };
+    opts.showFunc = util.addFunc(opts.showFunc, function () {
+      if (hasDefaultTransition) {
+        elem.style['transitionDelay'] = _origin.delay + ',0s,0s';
+      } else {
+        elem.style['transitionDelay'] = '0s,0s';
+      }
+    });
+    opts.hideFunc = util.addFunc(opts.hideFunc, function () {
+      if (hasDefaultTransition) {
+        elem.style['transitionDelay'] = _origin.delay + ',0s,{0}ms'.format(opts.ms);
+      } else {
+        elem.style['transitionDelay'] = '0s,{0}ms'.format(opts.ms);
+      }
+    });
 
     return regToggleBlock(elem, opts, defaultShow);
   }
 
-  addStyleSheet('.x-hide{opacity:0;visibility:hidden}');
+  function regToggleHeight(elem, opts, defaultShow) {
+    opts = opts || {};
+    opts.ms = opts.ms || 300;
+    opts.tf = opts.tf || 'ease';
+
+    elem.classList.add('x-ToggleHeight');
+
+    let _style = window.getComputedStyle(elem, null);
+    const hasDefaultTransition = _style.transition !== 'all 0s ease 0s';
+    if (hasDefaultTransition) {
+      elem.style['transition'] = _style.transition + ',max-height {0}ms {1}'.format(opts.ms, opts.tf);
+    } else {
+      elem.style['transition'] = 'max-height {0}ms {1}'.format(opts.ms, opts.tf);
+    }
+
+    opts.showFunc = util.addFunc(opts.showFunc, function () {
+      elem.style.maxHeight = elem.scrollHeight + 'px';
+    });
+    opts.hideFunc = util.addFunc(opts.hideFunc, function () {
+      elem.style.maxHeight = null;
+    });
+
+    return regToggleBlock(elem, opts, defaultShow);
+  }
+
+  addStyleSheet('.x-hide{display:none!important}');
+  addStyleSheet('.x-hideFade{opacity:0;visibility:hidden}');
+  addStyleSheet('.x-ToggleHeight{max-height:0;overflow:hidden}');
 
   return {
     addStyleSheet: addStyleSheet,
     loadStyleSheet: loadStyleSheet,
     loadScript: loadScript,
     nodeScriptReplace: nodeScriptReplace,
+    createElem: createElem,
     wrap: wrap,
     insert: insert,
+    insertPrev: insertPrev,
+    insertNext: insertNext,
+    insertFirst: insertFirst,
+    insertLast: insertLast,
     remove: remove,
     removeChild: removeChild,
     getScrollPosition: getScrollPosition,
     getOffset: getOffset,
     regToggleBlock: regToggleBlock,
     regToggleFade: regToggleFade,
+    regToggleHeight: regToggleHeight,
   };
 })();
 
@@ -792,9 +841,10 @@ util.anchor = (function () {
 
   if (window.location.hash) {
     defaultHash = window.location.hash;
+
     util.domReady(function () {
-      // util.bom.updateHash();
-      // _scrollTo(0, 0);
+      util.bom.updateHash();
+      _scrollTo(0, 0);
       untilDefault(0);
     });
   }
@@ -804,10 +854,9 @@ util.anchor = (function () {
     util.processControl.check('anchor-untilDefault').then(function (process) {
       if (!process.canStart()) return false;
       // 每次最少執行秒數
-      const leastLoading = util.processControl.leastLoading(500);
+      const leastLoading = util.processControl.leastLoading(100);
       // 錨點目標
       const anchorTarget = document.querySelector(defaultHash);
-
       // 直到錨點函式
       const untilFunc = leastLoading.bind(null, function () {
         let next = null;
@@ -820,7 +869,7 @@ util.anchor = (function () {
           next = function () {
             setTimeout(function () {
               untilDefault(duration);
-            }, 500);
+            }, 200);
           };
         }
 
@@ -905,7 +954,16 @@ util.anchor = (function () {
     let targetAnchor = document.querySelector(selector);
     if (!targetAnchor) return;
 
-    _scrollTo(getElementTop(targetAnchor), duration, callback);
+    _scrollTo(getElementTop(targetAnchor), duration, function () {
+      util.bom.updateHash(targetAnchor.id);
+      if (callback) callback();
+    });
+  }
+
+  function scrollTop() {
+    _scrollTo(0, null, function () {
+      util.bom.updateHash();
+    });
   }
 
   // 滾動至 (位置, 持續時間, 回呼函式)
@@ -977,7 +1035,7 @@ util.anchor = (function () {
     scrollHashHandler: scrollHashHandler,
     scrollHandler: scrollHandler,
     scrollTo: scrollTo,
-    scrollTop: _scrollTo.bind(null, 0),
+    scrollTop: scrollTop,
     untilDefault: untilDefault,
     processLinks: processLinks,
     processSections: processSections,
@@ -1050,24 +1108,18 @@ util.modal = (function () {
     if (!this.target) {
       console.log('Modal.create() - 1');
       // 目標容器(背景)
-      this.target = document.createElement('div');
-      this.target.classList.add(modalClasses.backdrop);
+      this.target = util.dom.createElem('div', null, { className: modalClasses.backdrop });
       // 區塊(框)
-      this.block = document.createElement('div');
-      this.block.classList.add(modalClasses.block);
+      this.block = util.dom.createElem('div', null, { className: modalClasses.block });
       // 顯示內容
-      this.mainContent = document.createElement('div');
-      this.mainContent.classList.add(modalClasses.content);
+      this.mainContent = util.dom.createElem('div', null, { className: modalClasses.content });
       // 關閉按鈕
-      this.closeBtn = document.createElement('div');
-      this.closeBtn.innerHTML = '&times;';
-      this.closeBtn.classList.add(modalClasses.closeBtn);
+      this.closeBtn = util.dom.createElem('div', '&times;', { className: modalClasses.closeBtn });
       // 組合模態框
-      this.block.insertBefore(this.mainContent, null);
-      this.block.insertBefore(this.closeBtn, this.mainContent.nextElementSibling);
-      this.target.insertBefore(this.block, null);
-      // 插入模態框
-      util.dom.insert(this.target, parentNode);
+      util.dom.insert(this.block, this.mainContent);
+      util.dom.insert(this.block, this.closeBtn);
+      util.dom.insert(this.target, this.block);
+      util.dom.insert(parentNode, this.target);
 
       // 註冊切換顯示
       this.switchFunc = util.dom.regToggleFade(this.target, { activeClass: modalClasses.backdrop_active }, false);
@@ -1098,15 +1150,7 @@ util.modal = (function () {
   };
   Modal.prototype.addCloseHandler = function (func) {
     console.log('Modal.addCloseHandler()');
-    let oldFunc = this.onClose || function () {};
-    if (typeof oldFunc !== 'function') {
-      this.onClose = func;
-    } else {
-      this.onClose = function () {
-        oldFunc();
-        func();
-      };
-    }
+    this.onClose = util.addFunc(this.onClose, func);
   };
   Modal.prototype.initContent = function (html) {
     console.log('Modal.initContent()');
@@ -1169,47 +1213,32 @@ util.modal = (function () {
   function createConfirm(name, title, msg, confirmFunc, cancelFunc) {
     return fetch(name).then(function (modal) {
       if (!modal.mainContent.firstChild && msg) {
-        let html = contentTemplate['base'](title, msg);
+        const html = contentTemplate['base'](title, msg);
         modal.initContent(html);
 
-        // footer
-        let footer = document.createElement('div');
-        footer.classList.add(modalClasses.contentFooter);
-        // confirmBtn
-        let confirmBtn = document.createElement('div');
-        confirmBtn.innerText = '確認';
-        confirmBtn.classList.add(modalClasses.btn);
-        confirmBtn.classList.add(modalClasses.btn_confirm);
-        // cancelBtn
-        let cancelBtn = document.createElement('div');
-        cancelBtn.innerText = '取消';
-        cancelBtn.classList.add(modalClasses.btn);
-        cancelBtn.classList.add(modalClasses.btn_cancel);
+        const footer = util.dom.createElem('div', null, { className: modalClasses.contentFooter });
+        const confirmBtn = util.dom.createElem('div', '確認', {
+          className: '{0} {1}'.format(modalClasses.btn, modalClasses.btn_confirm),
+          onclick: confirmFunc,
+        });
+        const cancelBtn = util.dom.createElem('div', '取消', {
+          className: '{0} {1}'.format(modalClasses.btn, modalClasses.btn_cancel),
+          onclick: cancelFunc,
+        });
         // 組合
-        footer.insertBefore(confirmBtn, null);
-        footer.insertBefore(cancelBtn, confirmBtn.nextElementSibling);
-        // 插入模態框
-        util.dom.insert(footer, modal.mainContent);
-
-        // 監聽
-        confirmBtn.addEventListener('click', function () {
-          if (confirmFunc) confirmFunc();
-          modal.close();
-        });
-        cancelBtn.addEventListener('click', function () {
-          if (cancelFunc) cancelFunc();
-          modal.close();
-        });
+        util.dom.wrap(confirmBtn, footer);
+        util.dom.wrap(cancelBtn, footer);
+        util.dom.wrap(footer, modal.mainContent);
       }
 
       return modal;
     });
   }
 
-  createConfirm('loginYet', '尚未登入', '請先登入會員，再進行操作。<br/>立即導轉至登入頁?', function () {
-    console.log('xx');
+  util.domReady(function () {
+    createConfirm('loginYet', '尚未登入', '請先登入會員，再進行操作。<br/>立即導轉至登入頁?', util.bom.redirectMemberLogin);
+    createAlert('systemBusy', null, '系統忙碌中，請稍後再試！');
   });
-  createAlert('systemBusy', null, '系統忙碌中，請稍後再試！');
 
   return {
     contentTemplate: contentTemplate,

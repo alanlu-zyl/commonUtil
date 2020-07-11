@@ -10,15 +10,12 @@
     <script defer src="./assets/js/home.js"></script>
     <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.0.0/styles/default.min.css" />
     <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.0.0/highlight.min.js"></script>
-    <script>
-      hljs.initHighlightingOnLoad();
-    </script>
   </head>
   <body>
     <div id="app">
       <nav>
         <h1>CommonUtil</h1>
-        <ul>
+        <ul id="navList">
           <li>
             <a href="#default">(Default)</a>
             <ul>
@@ -48,16 +45,110 @@
               <li><a href="#array-findObjByKey">findObjByKey</a></li>
             </ul>
           </li>
-          <li><a href="#date">日期相關 (Date)</a></li>
-          <li><a href="#string">字串相關 (String)</a></li>
-          <li><a href="#math">數學相關 (Math)</a></li>
-          <li><a href="#bom">BOM相關 (BOM)</a></li>
-          <li><a href="#dom">DOM相關 (DOM)</a></li>
-          <li><a href="#img">圖片相關 (Img)</a></li>
-          <li><a href="#processControl">處理控制相關 (ProcessControl)</a></li>
-          <li><a href="#ajax">AJAX (Ajax)</a></li>
-          <li><a href="#anchor">錨點相關 (Anchor)</a></li>
-          <li><a href="#modal">模態框 (Modal)</a></li>
+          <li>
+            <a href="#date">日期相關 (Date)</a>
+            <ul>
+              <li><a href="#date-get">get</a></li>
+              <li><a href="#date-format">format</a></li>
+            </ul>
+          </li>
+          <li>
+            <a href="#string">字串相關 (String)</a>
+            <ul>
+              <li><a href="#string-thousandSeparator">thousandSeparator</a></li>
+            </ul>
+          </li>
+          <li>
+            <a href="#math">數學相關 (Math)</a>
+            <ul>
+              <li><a href="#math-getGCD">getGCD</a></li>
+              <li><a href="#math-reduceFraction">reduceFraction</a></li>
+            </ul>
+          </li>
+          <li>
+            <a href="#bom">BOM相關 (BOM)</a>
+            <ul>
+              <li><a href="#bom-getUrlParams">getUrlParams</a></li>
+              <li><a href="#bom-updateHash">updateHash</a></li>
+              <li><a href="#bom-notSupportIE">notSupportIE</a></li>
+              <li><a href="#bom-redirectMemberLogin">redirectMemberLogin</a></li>
+            </ul>
+          </li>
+          <li>
+            <a href="#dom">DOM相關 (DOM)</a>
+            <ul>
+              <li><a href="#dom-addStyleSheet">addStyleSheet</a></li>
+              <li><a href="#dom-loadStyleSheet">loadStyleSheet</a></li>
+              <li><a href="#dom-nodeScriptReplace">nodeScriptReplace</a></li>
+              <li><a href="#dom-createElem">createElem</a></li>
+              <li><a href="#dom-wrap">wrap</a></li>
+              <li><a href="#dom-insert">insert</a></li>
+              <li><a href="#dom-insertPrev">insertPrev</a></li>
+              <li><a href="#dom-insertNext">insertNext</a></li>
+              <li><a href="#dom-insertFirst">insertFirst</a></li>
+              <li><a href="#dom-insertLast">insertLast</a></li>
+              <li><a href="#dom-remove">remove</a></li>
+              <li><a href="#dom-removeChild">removeChild</a></li>
+              <li><a href="#dom-getScrollPosition">getScrollPosition</a></li>
+              <li><a href="#dom-getOffset">getOffset</a></li>
+              <li><a href="#dom-regToggleBlock">regToggleBlock</a></li>
+              <li><a href="#dom-regToggleFade">regToggleFade</a></li>
+            </ul>
+          </li>
+          <li>
+            <a href="#img">圖片相關 (Img)</a>
+            <ul>
+              <li><a href="#img-preload">preload</a></li>
+              <li><a href="#img-onError">onError</a></li>
+              <li><a href="#img-onLoad">onLoad</a></li>
+              <li><a href="#img-addRadioStyle">addRadioStyle</a></li>
+            </ul>
+          </li>
+          <li>
+            <a href="#processControl">處理控制相關 (ProcessControl)</a>
+            <ul>
+              <li><a href="#processControl-showLog">showLog</a></li>
+              <li><a href="#processControl-check">check</a></li>
+              <li><a href="#processControl-checkOnce">checkOnce</a></li>
+              <li><a href="#processControl-leastLoading">leastLoading</a></li>
+            </ul>
+          </li>
+          <li>
+            <a href="#ajax">AJAX (Ajax)</a>
+            <ul>
+              <li><a href="#ajax-errorHandler">errorHandler</a></li>
+              <li><a href="#ajax-get">get</a></li>
+              <li><a href="#ajax-post">post</a></li>
+            </ul>
+          </li>
+          <li>
+            <a href="#anchor">錨點相關 (Anchor)</a>
+            <ul>
+              <li><a href="#anchor-setWrapper">setWrapper</a></li>
+              <li><a href="#anchor-setFixedHeader">setFixedHeader</a></li>
+              <li><a href="#anchor-setSections">setSections</a></li>
+              <li><a href="#anchor-setSectionsData">setSectionsData</a></li>
+              <li><a href="#anchor-scrollHashHandler">scrollHashHandler</a></li>
+              <li><a href="#anchor-scrollHandler">scrollHandler</a></li>
+              <li><a href="#anchor-scrollTo">scrollTo</a></li>
+              <li><a href="#anchor-scrollTop">scrollTop</a></li>
+              <li><a href="#anchor-untilDefault">untilDefault</a></li>
+              <li><a href="#anchor-processLinks">processLinks</a></li>
+              <li><a href="#anchor-processSections">processSections</a></li>
+            </ul>
+          </li>
+          <li>
+            <a href="#modal">模態框 (Modal)</a>
+            <ul>
+              <li><a href="#modal-contentTemplate">contentTemplate</a></li>
+              <li><a href="#modal-set">set</a></li>
+              <li><a href="#modal-open">open</a></li>
+              <li><a href="#modal-fetch">fetch</a></li>
+              <li><a href="#modal-createAlert">createAlert</a></li>
+              <li><a href="#modal-createError">createError</a></li>
+              <li><a href="#modal-createConfirm">createConfirm</a></li>
+            </ul>
+          </li>
         </ul>
       </nav>
 
@@ -309,8 +400,6 @@ console.log(obj[1]); // {id: 1, value: "c", text: "a", other: "d"}
           </div>
         </section>
       </main>
-
-      <div id="goTop"></div>
     </div>
   </body>
 </html>

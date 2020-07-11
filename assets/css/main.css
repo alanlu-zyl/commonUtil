@@ -30,11 +30,7 @@ body {
   font-family: 'Microsoft JhengHei', sans-serif;
   font-weight: 400;
   line-height: 1.7;
-}
-textarea {
-  font-size: 0.5em;
-  width: 100%;
-  min-height: 10rem;
+  font-size: 16px;
 }
 .btn {
   margin: 0.5rem;
@@ -44,6 +40,17 @@ textarea {
   border: 1px solid #777;
   border-radius: 3px;
   cursor: pointer;
+}
+.toggle::before {
+  position: absolute;
+  top: 0;
+  right: 0;
+  content: 'open';
+  display: inline-block;
+  cursor: pointer;
+}
+.toggle.open::before {
+  content: 'close';
 }
 #app > * {
   padding: 1rem;
@@ -71,24 +78,33 @@ nav {
   position: fixed;
   top: 0;
   left: 0;
-  width: 15rem;
+  width: 25rem;
   height: 100vh;
   overflow-y: scroll;
   background-color: #fff;
 }
-nav ul {
+#navList {
   list-style: none;
 }
-nav > ul ul {
+#navList > li {
+  margin-top: 1rem;
+  position: relative;
+}
+#navList > li > ul {
+  list-style: none;
   margin-left: 1rem;
 }
 main {
-  margin-left: 15rem;
+  margin-left: 25rem;
+}
+textarea {
+  width: 100%;
+  min-height: 20rem;
 }
 section {
   margin: 0 auto;
-  min-height: 100vh;
   padding: 1rem;
+  min-height: 100vh;
 }
 section h3 {
   margin-top: 1rem;

@@ -6,6 +6,8 @@
 @color-gray-light: #f7f7f7;
 @color-gray-dark: #777;
 
+@width-nav: 25rem;
+
 // ========================================================
 // === Mixins ===
 // ========================================================
@@ -62,17 +64,12 @@ body {
   font-family: 'Microsoft JhengHei', sans-serif;
   font-weight: 400;
   line-height: 1.7;
+  font-size: 16px;
 }
 
 // ========================================================
 // === Components ===
 // ========================================================
-
-textarea {
-  font-size: 0.5em;
-  width: 100%;
-  min-height: 10rem;
-}
 
 .btn {
   margin: 0.5rem;
@@ -82,6 +79,23 @@ textarea {
   border: 1px solid @color-gray-dark;
   border-radius: 3px;
   cursor: pointer;
+}
+
+.toggle {
+  &::before {
+    position: absolute;
+    top: 0;
+    right: 0;
+    content: 'open';
+    display: inline-block;
+    cursor: pointer;
+  }
+
+  &.open {
+    &::before {
+      content: 'close';
+    }
+  }
 }
 
 // ========================================================
@@ -119,27 +133,38 @@ nav {
   position: fixed;
   top: 0;
   left: 0;
-  width: 15rem;
+  width: @width-nav;
   height: 100vh;
   overflow-y: scroll;
-  background-color: #fff;
+  background-color: @color-white;
+}
 
-  ul {
-    list-style: none;
-  }
-  > ul ul {
-    margin-left: 1rem;
+#navList {
+  list-style: none;
+  > li {
+    margin-top: 1rem;
+    position: relative;
+
+    > ul {
+      list-style: none;
+      margin-left: 1rem;
+    }
   }
 }
 
 main {
-  margin-left: 15rem;
+  margin-left: @width-nav;
+}
+
+textarea {
+  width: 100%;
+  min-height: 20rem;
 }
 
 section {
   margin: 0 auto;
-  min-height: 100vh;
   padding: 1rem;
+  min-height: 100vh;
 
   h3 {
     margin-top: 1rem;
