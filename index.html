@@ -17,6 +17,12 @@
         <h1>CommonUtil</h1>
         <ul id="navList">
           <li>
+            <a href="#extension">(Extension)</a>
+            <ul>
+              <li><a href="#extension-stringFormat">StringFormat</a></li>
+            </ul>
+          </li>
+          <li>
             <a href="#default">(Default)</a>
             <ul>
               <li><a href="#default-domReady">domReady</a></li>
@@ -153,6 +159,25 @@
       </nav>
 
       <main>
+        <section id="extension">
+          <h2><a href="#extension">Extension</a></h2>
+          <div>
+            <div id="extension-stringFormat">
+              <h3>StringFormat</h3>
+              <pre><code class="js">// StringFormat
+console.log('1. {0} {1} {2}'.format('a','b','c')) // 1. a b c
+console.log('2. {4} {0}'.format('a','b','c')) // 2.  a
+console.log('3. {0} {1}'.format({0:'zyl', 1:'18'})) // 3. zyl 18
+console.log('4. {name} {age}'.format({name:'zyl', age:'18'})) // 4. zyl 18
+// same
+console.log('---')
+console.log(String.format('1. {0} {1} {2}', 'a','b','c')) // 1. a b c
+console.log(String.format('2. {4} {0}', 'a','b','c')) // 2.  a
+console.log(String.format('{0} {1}', {0:'zyl', 1:'18'})) // 3. zyl 18
+console.log(String.format('{name} {age}', {name:'zyl', age:'18'})) // 4. zyl 18
+</code></pre>
+            </div>
+        </section>
         <section id="default">
           <h2><a href="#default">Default</a></h2>
           <div>
