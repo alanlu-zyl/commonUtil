@@ -30,30 +30,13 @@ const processNav = function () {
         const toggleBtn = util.dom.createElem('div', null, { className: 'toggle' });
         util.dom.insertFirst(node, toggleBtn);
 
-        // const toggleSubNav = util.dom.regToggleBlock(
-        //   subNav,
-        //   {
-        //     showFunc: function () {
-        //       toggleBtn.classList.add('open');
-        //       subNav.style.maxHeight = subNav.scrollHeight + 'px';
-        //     },
-        //     hideFunc: function () {
-        //       toggleBtn.classList.remove('open');
-        //       subNav.removeAttribute('style');
-        //     },
-        //   },
-        //   false
-        // );
-
         const toggleSubNav = util.dom.regToggleHeight(
           subNav,
           {
             showFunc: function () {
-              console.log('show');
               toggleBtn.classList.add('open');
             },
             hideFunc: function () {
-              console.log('hide');
               toggleBtn.classList.remove('open');
             },
           },

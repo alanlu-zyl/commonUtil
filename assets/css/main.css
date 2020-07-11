@@ -98,6 +98,7 @@ main {
   margin-left: 25rem;
 }
 textarea {
+  padding: 0.5rem;
   width: 100%;
   min-height: 20rem;
 }
