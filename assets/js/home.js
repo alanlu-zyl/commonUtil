@@ -37,7 +37,7 @@ const processNav = function () {
   // 導覽列區塊
   const navList = document.getElementById('navList'); // tag: ul
   // 取得導覽列資訊
-  util.ajax.get('/assets/data/navList.json').then(function (res) {
+  util.ajax.get('https://zhongyoulu.github.io/commonUtil/assets/data/navList.json').then(function (res) {
     // 將資訊處理並插入置導覽列區塊
     util.forEach(res.data, function (nav) {
       // 第一層
