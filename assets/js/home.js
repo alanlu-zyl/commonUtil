@@ -202,7 +202,7 @@ const processCodeEditor = function () {
   CodeControl.prototype.edit = function () {
     if (this.mode === this.status.NORMAL) {
       this.mode = this.status.EDIT;
-      const textArea = util.dom.createElem('textarea', this.codeNode.textContent);
+      const textArea = util.dom.createElem('textarea', this.codeNode.textContent, { spellcheck: false });
       textArea.style.height = this.codeNode.clientHeight + 'px';
       this.codeNode.classList.add('x-hide');
       util.dom.insertFirst(this.target, textArea);
