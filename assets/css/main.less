@@ -6,15 +6,12 @@
 @color-gray-light: #f7f7f7;
 @color-gray-dark: #777;
 
-@width-nav: 25rem;
-
 // ========================================================
 // === Mixins ===
 // ========================================================
 .if(@condition, @property, @value) when (@condition = true) {
   @{property}: @value;
 }
-
 .content-centered(@x: true, @y: true) {
   display: flex;
   .if(@x, justify-content, center);
@@ -27,11 +24,9 @@
 .flex-centered {
   .content-centered();
 }
-
 .flex-centered-X {
   .content-centered(@y: false);
 }
-
 .flex-centered-Y {
   .content-centered(@x: false);
 }
@@ -57,6 +52,26 @@ body {
   background-color: @color-gray-light;
 }
 
+a {
+  transition: all 0.3s ease;
+  text-decoration: none;
+
+  &:link,
+  &:visited {
+    color: @color-gray-dark;
+  }
+  &:active,
+  &:hover {
+    color: @color-black;
+    text-decoration: underline;
+  }
+}
+
+::selection {
+  background-color: @color-gray-dark;
+  color: @color-white;
+}
+
 // ========================================================
 // === Typography ===
 // ========================================================
@@ -71,45 +86,9 @@ body {
 // === Components ===
 // ========================================================
 
-.btn {
-  margin: 0.5rem;
-  padding: 0.25rem 0.5rem;
-  color: @color-black;
-  background-color: @color-gray-light;
-  border: 1px solid @color-gray-dark;
-  border-radius: 3px;
-  cursor: pointer;
-}
-
-.toggle {
-  &::before {
-    position: absolute;
-    top: 0;
-    right: 0;
-    content: 'open';
-    display: inline-block;
-    cursor: pointer;
-  }
-
-  &.open {
-    &::before {
-      content: 'close';
-    }
-  }
-}
-
-// ========================================================
-// === Main ===
-// ========================================================
-#app {
-  > * {
-    padding: 1rem;
-  }
-}
-
 #goTop&:extend(.flex-centered) {
   position: fixed;
-  right: 2rem;
+  right: 3rem;
   bottom: 6vh;
   width: 4rem;
   height: 4rem;
@@ -129,13 +108,91 @@ body {
   }
 }
 
-nav {
-  position: fixed;
+.btn {
+  margin: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  color: @color-black;
+  background-color: @color-white;
+  border: 1px solid @color-gray-dark;
+  border-radius: 3px;
+  cursor: pointer;
+
+  &:hover {
+    background-color: @color-gray-light;
+  }
+}
+
+.toggle {
+  position: absolute;
   top: 0;
-  left: 0;
-  width: @width-nav;
-  height: 100vh;
-  overflow-y: scroll;
+  right: 0;
+  display: inline-block;
+  width: 2rem;
+  height: 2rem;
+  line-height: 2rem;
+  color: @color-gray-dark;
+  font-weight: bolder;
+  background-color: rgba(@color-gray-light, 0.8);
+  border-radius: 50%;
+  cursor: pointer;
+
+  &::after:extend(.flex-centered) {
+    content: '+';
+  }
+
+  &.open {
+    &::after {
+      content: '-';
+    }
+  }
+}
+
+.snippet {
+  max-width: 125rem;
+  border-radius: 5px;
+  padding: 1rem;
+  background-color: lighten(@color-gray-dark, 25);
+
+  pre {
+    display: block;
+    padding: 1rem;
+    background-color: #f0f0f0;
+    overflow: hidden;
+  }
+
+  code {
+    display: block;
+    padding: 0.5em;
+  }
+
+  textarea {
+    display: block;
+    padding: 0.5em;
+    width: 100%;
+    font-size: inherit;
+    line-height: inherit;
+    white-space: pre;
+    border: none;
+    outline: none;
+  }
+}
+
+// ========================================================
+// === Main ===
+// ========================================================
+#app {
+  display: flex;
+  > * {
+    padding: 1rem;
+    display: block;
+    height: 100vh;
+    overflow-y: scroll;
+  }
+}
+
+#nav {
+  flex: 0 0 20%;
+  min-width: 20rem;
   background-color: @color-white;
 }
 
@@ -144,29 +201,53 @@ nav {
   > li {
     margin-top: 1rem;
     position: relative;
+    font-weight: bold;
 
     > ul {
       list-style: none;
       margin-left: 1rem;
+      font-weight: normal;
     }
   }
 }
 
-main {
-  margin-left: @width-nav;
+#main {
+  flex: 1;
 }
 
-textarea {
-  padding: 0.5rem;
+.form_group {
+  position: relative;
+  & > * {
+    padding: 1rem 0.5rem;
+  }
+}
+#search {
+  margin-top: 0.5rem;
   width: 100%;
-  min-height: 20rem;
+  display: block;
+  outline: none;
+  border: none;
+  background-color: @color-gray-light;
+  & + label {
+    display: inline-block;
+    position: absolute;
+    top: -2rem;
+    font-size: 0.7em;
+    background-clip: content-box;
+    transition: all 0.3s ease;
+  }
+  &:placeholder-shown {
+    & + label {
+      top: 0;
+      opacity: 0;
+      visibility: hidden;
+    }
+  }
 }
 
 section {
-  margin: 0 auto;
+  margin: 5rem auto;
   padding: 1rem;
-  min-height: 100vh;
-
   h3 {
     margin-top: 1rem;
   }
