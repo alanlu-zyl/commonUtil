@@ -1,0 +1,386 @@
+[
+  {
+    "name": "extensions",
+    "text": "(Extensions)",
+    "alias": "Extensions",
+    "item": [
+      {
+        "name": "stringFormat",
+        "text": "StringFormat",
+        "code": [
+          "// String.format(str, [collection | ...args])",
+          "console.log(1, String.format('name={0}, ${1}', 'zyl', '20')) // 1 \"name=zyl, $20\"",
+          "console.log(2, String.format('name={0}, ${1}', {0:'zyl', 1:'20'})) // 2 \"name=zyl, $20\"",
+          "console.log(3, String.format('name={name}, ${price}', {name:'zyl', price:'20'})) // 3 \"name=zyl, $20\"",
+          "",
+          "// String.prototype.format",
+          "console.log(4, 'name={0}, ${1}'.format('alan','18')) // 4 \"name=alan, $18\"",
+          "console.log(5, 'name={0}, ${1}'.format({0:'alan', 1:'18'})) // 5 \"name=alan, $18\"",
+          "console.log(6, 'name={name}, ${price}'.format({name:'alan', price:'18'})) // 6 \"name=alan, $18\"",
+          "",
+          "// bad",
+          "console.log(7, '${price}, {0}, {1}'.format()) // 7 \"$, , \"",
+          "console.log(8, '${price}, {0}, {1}'.format('zyl', {price:9})) // 8 \"$, zyl, [object Object]\"",
+          "console.log(9, '${price}, {0}, {1}'.format({price:9}, 'zyl')) // 9 \"$9, , \""
+        ]
+      }
+    ]
+  },
+  {
+    "name": "default",
+    "text": "(Default)",
+    "alias": "Default",
+    "root": "util",
+    "item": [
+      {
+        "name": "domReady",
+        "text": "domReady",
+        "args": "(callback)",
+        "code": "util.domReady(function () {<br/>  console.log('domReady');<br/>});"
+      },
+      {
+        "name": "windowReady",
+        "text": "windowReady",
+        "args": "(callback)",
+        "code": "util.windowReady(function () {<br/>  console.log('windowReady');<br/>});"
+      },
+      {
+        "name": "throttle",
+        "text": "throttle",
+        "args": "(fn, mustRun = 150, delay = 100)",
+        "code": "// var throttled = <br/>window.throttled = util.throttle(function(e){<br/>  console.log(e.target.value)<br/>}, 1000, 500);<br/>// then<br/>document.getElementById('search').addEventListener('input', throttled);<br/>// document.getElementById('search').removeEventListener('input', throttled);"
+      },
+      {
+        "name": "debounce",
+        "text": "debounce",
+        "args": "(fn, delay = 100)",
+        "code": "// var debounced = <br/>window.debounced = util.debounce(function(e){<br/>   console.log(e.target.value)<br/>}, 500);<br/>// then<br/>document.getElementById('search').addEventListener('input', debounced);<br/>// document.getElementById('search').removeEventListener('input', debounced);"
+      },
+      { "name": "bindEvent", "text": "bindEvent", "args": "(el, type, selector, fn)", "code": "" },
+      { "name": "dispatchEvent", "text": "dispatchEvent", "args": "(el, type)", "code": "" },
+      {
+        "name": "forEach",
+        "text": "forEach",
+        "args": "(arr, callback, scope)",
+        "code": "// 1. Array<br/>util.forEach(Object.keys(util), function(keys, idx){<br/>  console.log(idx, keys);<br/>})<br/>// 2. NodeList (https://stackoverflow.com/questions/13433799/why-doesnt-nodelist-have-foreach)<br/>util.forEach(document.querySelectorAll(\"a[href^='#default']\") , function(link, idx){<br/>  console.log(idx, link);<br/>})"
+      },
+      {
+        "name": "mergeFuncs",
+        "text": "mergeFuncs",
+        "args": "(/* functions */)",
+        "code": "var func1 = function(){console.log(1)}<br/>var func2 = function(){console.log(2)}<br/>var func3 = util.mergeFuncs(func1, func2)<br/>func3()"
+      },
+      {
+        "name": "pipe",
+        "text": "pipe",
+        "args": "(/* functions */)(/* arguments */)",
+        "code": "/* 多參數只作用在首個函式，其餘接收前個函式的回傳值 */<br/>var func = util.pipe(<br/>  Math.max,<br/>  function(x){ return x + 5 }<br/>); // then<br/>console.log(func(5)); // 10<br/>console.log(func(5, 9)); // 14"
+      },
+      {
+        "name": "deepCopy",
+        "text": "deepCopy",
+        "args": "(obj)",
+        "code": "var obj1 = { a:1, b:2, c: { d:1, f: 2} };<br/>var obj2 = util.deepCopy(obj1);<br/>console.log(obj1 == obj2, obj1.c == obj2.c); // false false<br/>// 補充: Object.assign 只有淺拷貝<br/>var obj3 = Object.assign({}, obj1);<br/>console.log(obj1 == obj3, obj1.c == obj3.c); // false true"
+      },
+      {
+        "name": "deepFreeze",
+        "text": "deepFreeze",
+        "args": "(obj)",
+        "code": "var obj1 = { a:1, b:2, c: { d:1, f: 2} };<br/>util.deepFreeze(obj1);<br/>obj1.a = 2<br/>obj1.c.d = 5<br/>console.log(obj1.a, obj1.c.d); // 1 1<br/>// 補充: Object.freeze 只有淺凍結<br/>var obj2 = { a:1, b:2, c: { d:1, f: 2} };<br/>Object.freeze(obj2);<br/>obj2.a = 2<br/>obj2.c.d = 5<br/>console.log(obj2.a, obj2.c.d); // 1 5"
+      },
+      {
+        "name": "newEnum",
+        "text": "newEnum",
+        "args": "(seed)",
+        "code": "// Base<br/>var s1 = util.newEnum({<br/>  SUCCESS:1, FAILED :0,<br/>});<br/>console.log(s1.SUCCESS, s1.FAILED); // 1 0<br/>console.log(s1.prop[s1.SUCCESS]); // {value: 1, name: 'success', code: 'S'}<br/>// Array [value, name, code]<br/>var s2 = util.newEnum({<br/>  SUCCESS: [1, '成功', 'S'],<br/>  FAILED : [0, '失敗', 'F'],<br/>});<br/>console.log(s2.SUCCESS, s2.FAILED); // 1 0<br/>console.log(s2.prop[s2.FAILED]); // {value: 1, name: '成功', code: 'S'} // Object { value, ...otherProp }<br/>var s3 = util.newEnum({ SUCCESS: { value: 1, otherA: '成功', otherB: 'S'}, FAILED : { value: 0, otherA: '失敗', otherB: 'F', otherC: 'QQQ'}, });<br/>console.log(s3.SUCCESS, s3.FAILED);// 1 0 <br/>console.log(s3.prop[s3.FAILED]); // {value: 0, otherA: '失敗', otherB: 'F', otherC: 'QQQ'}"
+      }
+    ]
+  },
+  {
+    "name": "convert",
+    "text": "轉換相關 (Convert)",
+    "alias": "轉換相關",
+    "root": "util.convert",
+    "item": [
+      {
+        "name": "obj2QueryString",
+        "text": "obj2QueryString",
+        "args": "(params)",
+        "code": "var params = { a: 1, b: 'hello word' };<br/>console.log(util.convert.obj2QueryString(params)); // a=1&b=hello%20word"
+      },
+      {
+        "name": "queryString2Obj",
+        "text": "queryString2Obj",
+        "args": "(str)",
+        "code": "var str = 'a=1&b=hello%20word';<br/>console.log(util.convert.queryString2Obj(str)); // {a: '1', b: 'hello word'}"
+      },
+      {
+        "name": "json2ObjByKey",
+        "text": "json2ObjByKey",
+        "args": "(json, key = 'id')",
+        "code": "var json = [ { id: 1, value: 'a', text:'a' }, { id: 2, value: 'b' }, { id: 1, value: 'c', other:'d' }, ]<br/>var obj = util.convert.json2ObjByKey(json, 'id')<br/>console.log(obj);<br/>console.log(obj[1]);"
+      }
+    ]
+  },
+  {
+    "name": "arr",
+    "text": "陣列相關 (Array)",
+    "alias": "陣列相關",
+    "root": "util.arr",
+    "item": [
+      {
+        "name": "slice",
+        "text": "slice",
+        "args": "(arr, start = 0, end = arr.length)",
+        "code": "var arr1 = [ { id: 1, value: 'a' }, { id: 2, value: 'b' }, { id: 3, value: 'c' }, ]<br/>var arr2 = util.arr.slice(arr1, 1)<br/>console.log(arr2)<br/>// 如果陣列內容是obj，會回傳參考，要特別注意！<br/>arr2[0].value = 'D'<br/>console.log(arr1[1], arr2[0])<br/>// 如果不想變動到原值，可使用 pipe 搭配 deepCopy<br/>var arr2 = util.pipe(util.arr.slice, util.deepCopy)(arr1, 1)<br/>console.log(arr2)<br/>arr2[0].value = 'E'<br/>console.log(arr1[1], arr2[0])"
+      },
+      {
+        "name": "find",
+        "text": "find",
+        "args": "(arr, callback)",
+        "code": "var arr1 = [ { id: 1, value: 'a' }, { id: 2, value: 'b' }, ]<br/>var findFunc = function(v){ return v.id === 1 }<br/>var result = util.arr.find(arr1, findFunc)<br/>console.log(result);<br/>// 如果陣列內容是obj，會回傳參考，要特別注意！<br/>result.value = 'D'<br/>console.log(arr1[0], result)<br/>// 如果不想變動到原值，可使用 pipe 搭配 deepCopy<br/>var result = util.pipe(util.arr.find, util.deepCopy)(arr1, findFunc)<br/>console.log(result);<br/>result.value = 'E'<br/>console.log(arr1[0], result)"
+      },
+      {
+        "name": "findObjByKey",
+        "text": "findObjByKey",
+        "args": "(arr, key, value)",
+        "code": "/* util.arr.find 的擴展 */<br/>var arr1 = [ { id: 1, value: 'a' }, { id: 2, value: 'b' }, ]<br/>var result = util.arr.findObjByKey(arr1, 'id', 1)<br/>console.log(result)"
+      },
+      { "name": "filter", "text": "filter", "args": "", "code": "" }
+    ]
+  },
+  {
+    "name": "date",
+    "text": "日期相關 (Date)",
+    "alias": "日期相關",
+    "root": "util.date",
+    "item": [
+      {
+        "name": "get",
+        "text": "get",
+        "args": "(date)",
+        "code": "console.log(util.date.get()) // new Date()<br/>console.log(util.date.get('2020-10-30')) // new Date(date)"
+      },
+      {
+        "name": "format",
+        "text": "format",
+        "args": "(date)",
+        "code": "console.log(util.date.format())<br/>console.log(util.date.format('2020-10-30'))<br/>console.log(util.date.format('2020-10-30 18:30:00'))"
+      }
+    ]
+  },
+  {
+    "name": "str",
+    "text": "字串相關 (String)",
+    "alias": "字串相關",
+    "root": "util.str",
+    "item": [
+      {
+        "name": "thousandSeparator",
+        "text": "thousandSeparator",
+        "args": "(val)",
+        "code": "console.log(util.str.thousandSeparator(999)) // 999<br/>console.log(util.str.thousandSeparator(1999)) // 1,999<br/>console.log(util.str.thousandSeparator(19999999)) // 19,999,999<br/>console.log(util.str.thousandSeparator(19999.059)) // 19,999.059"
+      },
+      { "name": "urlTrackCode", "text": "urlTrackCode", "args": "(val, trackCode)", "code": "" }
+    ]
+  },
+  {
+    "name": "math",
+    "text": "數學相關 (Math)",
+    "alias": "數學相關",
+    "root": "util.math",
+    "item": [
+      {
+        "name": "getGCD",
+        "text": "getGCD",
+        "args": "(a, b)",
+        "code": "console.log(util.math.getGCD(8, 16)) // 8"
+      },
+      {
+        "name": "reduceFraction",
+        "text": "reduceFraction",
+        "args": "(numerator, denominator)",
+        "code": "console.log(util.math.reduceFraction(8, 16)) // [1, 2]"
+      }
+    ]
+  },
+  {
+    "name": "bom",
+    "text": "BOM相關 (BOM)",
+    "alias": "BOM相關",
+    "root": "util.bom",
+    "item": [
+      {
+        "name": "UA",
+        "text": "UA",
+        "args": "",
+        "code": "console.log(util.bom.UA)"
+      },
+      { "name": "notSupportIE", "text": "notSupportIE", "args": "", "code": "" },
+      {
+        "name": "getUrlParams",
+        "text": "getUrlParams",
+        "args": "(key)",
+        "code": "console.log(util.bom.getUrlParams())<br/>console.log(util.bom.getUrlParams('id'))"
+      },
+      {
+        "name": "updateHash",
+        "text": "updateHash",
+        "args": "(hash)",
+        "code": "console.log(util.bom.updateHash())"
+      },
+      { "name": "redirectMemberLogin", "text": "redirectMemberLogin", "args": "", "code": "" }
+    ]
+  },
+  {
+    "name": "dom",
+    "text": "DOM相關 (DOM)",
+    "alias": "DOM相關",
+    "root": "util.dom",
+    "item": [
+      { "name": "createElem", "text": "createElem", "args": "(tag, html, attrs)", "code": "" },
+      { "name": "cloneElem", "text": "cloneElem", "args": "(el)", "code": "" },
+      {
+        "name": "insert",
+        "text": "insert",
+        "args": "(el, parentNode = document.body, referenceNode = null)",
+        "code": ""
+      },
+      { "name": "insertPrev", "text": "insertPrev", "args": "(el, refEl)", "code": "" },
+      { "name": "insertNext", "text": "insertNext", "args": "(el, refEl)", "code": "" },
+      { "name": "insertFirst", "text": "insertFirst", "args": "(el, refEl)", "code": "" },
+      { "name": "insertLast", "text": "insertLast", "args": "(el, refEl)", "code": "" },
+      { "name": "wrap", "text": "wrap", "args": "(el, wrapper)", "code": "" },
+      { "name": "remove", "text": "remove", "args": "(el, parentNode = el.parentNode)", "code": "" },
+      { "name": "removeChild", "text": "removeChild", "args": "(parentNode)", "code": "" },
+      {
+        "name": "addStyleSheet",
+        "text": "addStyleSheet",
+        "args": "(styles, id = 'default')",
+        "code": "var styles = [ 'h1{color:pink}', 'h3{color:gold}' ].join('');<br/>util.dom.addStyleSheet(styles, 'h-color')"
+      },
+      {
+        "name": "loadStyleSheet",
+        "text": "loadStyleSheet",
+        "args": "(href, attrs, onLoadFunc)",
+        "code": "// attrs = Object.assign({ href: href, rel: 'stylesheet', type: 'text/css' }, attrs);<br/>util.dom.loadStyleSheet('https://unpkg.com/tailwindcss@^1.0/dist/tailwind.min.css')"
+      },
+      {
+        "name": "loadScript",
+        "text": "loadScript",
+        "args": "(src, attrs, onLoadFunc)",
+        "code": ""
+      },
+      {
+        "name": "nodeScriptReplace",
+        "text": "nodeScriptReplace",
+        "args": "(node)",
+        "code": ""
+      },
+      {
+        "name": "getScrollPosition",
+        "text": "getScrollPosition",
+        "args": "(el)",
+        "code": "console.log(util.dom.getScrollPosition())"
+      },
+      {
+        "name": "setScrollPosition",
+        "text": "setScrollPosition",
+        "args": "(el, y, x)",
+        "code": ""
+      },
+      { "name": "getOffset", "text": "getOffset", "args": "(el, wrapper)", "code": "" },
+      {
+        "name": "regToggleBlock",
+        "text": "regToggleBlock",
+        "args": "(el, opts, defaultShow)",
+        "code": ""
+      },
+      {
+        "name": "regToggleFade",
+        "text": "regToggleFade",
+        "args": "(el, opts, defaultShow)",
+        "code": ""
+      },
+      {
+        "name": "regToggleHeight",
+        "text": "regToggleHeight",
+        "args": "(el, opts, defaultShow)",
+        "code": ""
+      }
+    ]
+  },
+  {
+    "name": "img",
+    "text": "圖片相關 (Img)",
+    "alias": "圖片相關",
+    "root": "util.img",
+    "item": [
+      { "name": "preload", "text": "preload", "args": "(img)", "code": "" },
+      { "name": "onError", "text": "onError", "args": "(img)", "code": "" },
+      { "name": "onLoad", "text": "onLoad", "args": "(img)", "code": "" },
+      { "name": "addRadioStyle", "text": "addRadioStyle", "args": "(x, y)", "code": "" }
+    ]
+  },
+  {
+    "name": "processControl",
+    "text": "處理控制相關 (ProcessControl)",
+    "alias": "處理控制相關",
+    "root": "util.processControl",
+    "item": [
+      { "name": "showLog", "text": "showLog", "args": "", "code": "" },
+      { "name": "check", "text": "check", "args": "(name, prop)", "code": "" },
+      { "name": "checkOnce", "text": "checkOnce", "args": "(name)", "code": "" },
+      { "name": "leastLoading", "text": "leastLoading", "args": "(ms)", "code": "" }
+    ]
+  },
+  {
+    "name": "ajax",
+    "text": "AJAX (Ajax)",
+    "alias": "AJAX相關",
+    "root": "util.ajax",
+    "item": [
+      { "name": "errorHandler", "text": "errorHandler", "args": "(customError)", "code": "" },
+      { "name": "get", "text": "get", "args": "(url, params, successFunc, errorFunc)", "code": "" },
+      { "name": "post", "text": "post", "args": "(url, params, successFunc, errorFunc)", "code": "" }
+    ]
+  },
+  {
+    "name": "anchor",
+    "text": "錨點相關 (Anchor)",
+    "alias": "錨點相關",
+    "root": "util.anchor",
+    "item": [
+      { "name": "setRootEl", "text": "setRootEl", "args": "", "code": "" },
+      { "name": "setFixedHeader", "text": "setFixedHeader", "args": "(el)", "code": "" },
+      { "name": "setWrapper", "text": "setWrapper", "args": "(el)", "code": "" },
+      { "name": "getElementTop", "text": "getElementTop", "args": "(el)", "code": "" },
+      { "name": "scrollTo", "text": "scrollTo", "args": "(selector, duration, callback)", "code": "" },
+      { "name": "scrollTop", "text": "scrollTop", "args": "(duration, callback)", "code": "" },
+      { "name": "processLinks", "text": "processLinks", "args": "(links, duration, callback)", "code": "" },
+      { "name": "setSections", "text": "setSections", "args": "(id)", "code": "" },
+      { "name": "setSectionsData", "text": "setSectionsData", "args": "(el)", "code": "" },
+      { "name": "processSections", "text": "processSections", "args": "(sectionEls)", "code": "" },
+      { "name": "untilDefault", "text": "untilDefault", "args": "(duration)", "code": "" }
+    ]
+  },
+  {
+    "name": "modal",
+    "text": "模態框 (Modal)",
+    "alias": "模態框相關",
+    "root": "util.modal",
+    "item": [
+      { "name": "TYPE", "text": "TYPE", "args": "", "code": "" },
+      { "name": "contentTemplate", "text": "contentTemplate", "args": "", "code": "" },
+      { "name": "set", "text": "set", "args": "", "code": "" },
+      { "name": "open", "text": "open", "args": "(name)", "code": "" },
+      { "name": "close", "text": "close", "args": "(name)", "code": "" },
+      { "name": "addCloseHandler", "text": "addCloseHandler", "args": "(name, fn)", "code": "" },
+      { "name": "fetch", "text": "fetch", "args": "(name, parentNode)", "code": "" },
+      { "name": "create", "text": "create", "args": "(opts)", "code": "" },
+      { "name": "openAlert", "text": "openAlert", "args": "(name, title, msg)", "code": "" },
+      { "name": "openError", "text": "openError", "args": "(name, title, msg)", "code": "" },
+      { "name": "openConfirm", "text": "openConfirm", "args": "(name, title, msg)", "code": "" }
+    ]
+  }
+]

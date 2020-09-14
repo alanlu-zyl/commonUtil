@@ -45,6 +45,20 @@
       writable: true,
     });
   }
+  if (!Element.prototype.matches) {
+    Element.prototype.matches =
+      Element.prototype.matchesSelector ||
+      Element.prototype.mozMatchesSelector ||
+      Element.prototype.msMatchesSelector ||
+      Element.prototype.oMatchesSelector ||
+      Element.prototype.webkitMatchesSelector ||
+      function (s) {
+        var matches = (this.document || this.ownerDocument).querySelectorAll(s),
+          i = matches.length;
+        while (--i >= 0 && matches.item(i) !== this) {}
+        return i > -1;
+      };
+  }
 })();
 
 // Extensions
@@ -84,7 +98,7 @@ const util = {
     if (document.readyState === 'complete') callback();
     else window.addEventListener('load', callback);
   },
-  throttle: function (func, mustRun, delay) {
+  throttle: function (fn, mustRun, delay) {
     mustRun = mustRun || 150;
     delay = delay || delay === 0 ? delay : 100;
     let timer = null;
@@ -98,16 +112,16 @@ const util = {
       const now = new Date();
       if (now - lastTime >= mustRun) {
         lastTime = now;
-        func.apply(context, args);
+        fn.apply(context, args);
       } else if (delay > 0) {
         timer = setTimeout(function () {
           timer = null;
-          func.apply(context, args);
+          fn.apply(context, args);
         }, delay);
       }
     };
   },
-  debounce: function (func, delay) {
+  debounce: function (fn, delay) {
     delay = delay || 100;
     let timer = null;
 
@@ -118,9 +132,30 @@ const util = {
       clearTimeout(timer);
       timer = setTimeout(function () {
         timer = null;
-        func.apply(context, args);
+        fn.apply(context, args);
       }, delay);
     };
+  },
+  bindEvent: function (el, type, selector, fn) {
+    el.addEventListener(type, function (e) {
+      if (selector) {
+        if (e.target.matches(selector)) {
+          fn.call(e.target, e);
+        }
+      } else {
+        fn(e);
+      }
+    });
+  },
+  dispatchEvent: function (el, type) {
+    let ev;
+    if (typeof Event === 'function') {
+      ev = new Event(type);
+    } else {
+      ev = document.createEvent('Event');
+      ev.initEvent(type, true, true);
+    }
+    el.dispatchEvent(ev);
   },
   forEach: function (arr, callback, scope) {
     if (!arr || !arr.length || !callback) return;
@@ -130,12 +165,12 @@ const util = {
   },
   mergeFuncs: function () {
     const funcs = [];
-    util.forEach(arguments, function (func) {
-      if (typeof func === 'function') funcs.push(func);
+    util.forEach(arguments, function (fn) {
+      if (typeof fn === 'function') funcs.push(fn);
     });
     return function () {
-      util.forEach(funcs, function (func) {
-        func.call(this, arguments);
+      util.forEach(funcs, function (fn) {
+        fn.call(this, arguments);
       });
     };
   },
@@ -189,16 +224,6 @@ const util = {
     seed.prop = acc; // properties
     return util.deepFreeze(seed);
   },
-  dispatchEvent: function (elem, eventName) {
-    let event;
-    if (typeof Event === 'function') {
-      event = new Event(eventName);
-    } else {
-      event = document.createEvent('Event');
-      event.initEvent(eventName, true, true);
-    }
-    elem.dispatchEvent(event);
-  },
 };
 
 // 轉換相關
@@ -248,6 +273,7 @@ util.arr = (function () {
   }
 
   function find(arr, callback) {
+    if (!arr) return null;
     return arr.find(callback);
   }
 
@@ -269,14 +295,14 @@ util.arr = (function () {
 
 // 日期相關
 util.date = (function () {
-  const week = ['日', '一', '二', '三', '四', '五', '六'];
+  const _week = ['日', '一', '二', '三', '四', '五', '六'];
+
+  function _checkZero(i) {
+    return i < 10 ? '0' + i : i;
+  }
 
   function get(date) {
     return date ? new Date(date) : new Date();
-  }
-
-  function checkZero(i) {
-    return i < 10 ? '0' + i : i;
   }
 
   function format(date) {
@@ -287,12 +313,12 @@ util.date = (function () {
       dd: _d.getDate(),
       hour: _d.getHours(),
       minu: _d.getMinutes(),
-      day: week[_d.getDay()],
+      day: _week[_d.getDay()],
     };
     obj.ymd = '{yyyy}/{mm}/{dd}'.format({
       yyyy: obj.yyyy,
-      mm: checkZero(obj.mm),
-      dd: checkZero(obj.dd),
+      mm: _checkZero(obj.mm),
+      dd: _checkZero(obj.dd),
     });
     return obj;
   }
@@ -305,7 +331,6 @@ util.date = (function () {
 
 // 字串相關
 util.str = (function () {
-  // 千位符
   function thousandSeparator(val) {
     if (!val) return val;
     const parts = val.toString().split('.');
@@ -321,11 +346,10 @@ util.str = (function () {
 
 // 數學相關
 util.math = (function () {
-  // 最大公約數
   function getGCD(a, b) {
     return b ? getGCD(b, a % b) : a;
   }
-  // 最簡分數
+
   function reduceFraction(numerator, denominator) {
     const gcd = getGCD(numerator, denominator);
     return [numerator / gcd, denominator / gcd];
@@ -339,23 +363,43 @@ util.math = (function () {
 
 // BOM相關
 util.bom = (function () {
-  const userAgent = window.navigator.userAgent;
-  const isIE = userAgent.indexOf('MSIE') > 0 || userAgent.indexOf('Trident/') > 0;
-  const isEdge = userAgent.indexOf('Edge/') > 0;
+  const UA = (function () {
+    const inBrowser = typeof window !== 'undefined';
+    const UA = inBrowser && window.navigator.userAgent.toLowerCase();
+    const isIE = UA && /msie|trident/.test(UA);
+    const isEdge = UA && /edge\/\d+/.test(UA);
+    const isChrome = UA && /chrome\/\d+/.test(UA) && !isEdge;
+    const isFF = UA && /firefox\/\d+/.test(UA);
+
+    const inWeex = typeof WXEnvironment !== 'undefined' && !!WXEnvironment.platform;
+    const weexPlatform = inWeex && WXEnvironment.platform.toLowerCase();
+    const isAndroid = (UA && /android/.test(UA)) || weexPlatform === 'android';
+    const isIOS = (UA && /iphone|ipad|ipod|ios/.test(UA)) || weexPlatform === 'ios';
+
+    return {
+      isIE: isIE,
+      isEdge: isEdge,
+      isChrome: isChrome,
+      isFF: isFF,
+      isAndroid: isAndroid,
+      isIOS: isIOS,
+    };
+  })();
+
   function notSupportIE() {
-    if (isIE || isEdge) {
+    if (UA.isIE || UA.isEdge) {
       util.modal.openError('notSupportIE', null, '您的瀏覽器過舊，請使用new Edge或Chrome以獲得更好的網站體驗。');
     }
   }
 
-  let urlParams = null;
+  let _urlParams = null;
   function getUrlParams(key) {
-    if (!urlParams) urlParams = util.convert.queryString2Obj(window.location.search.substr(1));
-    return key ? urlParams[key] : Object.assign({}, urlParams);
+    if (!_urlParams) _urlParams = util.convert.queryString2Obj(window.location.search.substr(1));
+    return key ? _urlParams[key] : Object.assign({}, _urlParams);
   }
 
   function updateHash(hash) {
-    hash = hash ? '#' + hash : window.location.pathname + window.location.search;
+    hash = hash ? '#' + encodeURI(hash) : window.location.pathname + window.location.search;
     window.history.replaceState(null, null, hash);
   }
 
@@ -365,7 +409,7 @@ util.bom = (function () {
   }
 
   return {
-    isIE: isIE,
+    UA: UA,
     notSupportIE: notSupportIE,
     getUrlParams: getUrlParams,
     updateHash: updateHash,
@@ -376,43 +420,50 @@ util.bom = (function () {
 // DOM相關
 util.dom = (function () {
   function createElem(tag, html, attrs) {
-    const elem = document.createElement(tag);
-    if (html) elem.innerHTML = html;
-    if (attrs) Object.assign(elem, attrs);
-    return elem;
+    const el = document.createElement(tag);
+    if (html) {
+      if (html.nodeType === 1) insert(html, el);
+      else el.innerHTML = html;
+    }
+    if (attrs) {
+      util.forEach(Object.keys(attrs), function (key) {
+        el.setAttribute(key, attrs[key]);
+      });
+    }
+    return el;
   }
-  function cloneElem(elem) {
-    const newElem = createElem(elem.tagName, elem.innerHTML);
-    util.forEach(elem.attributes, function (attr) {
-      newElem.setAttribute(attr.name, attr.value);
+  function cloneElem(el) {
+    const newEl = createElem(el.tagName, el.innerHTML);
+    util.forEach(el.attributes, function (attr) {
+      newEl.setAttribute(attr.name, attr.value);
     });
-    return newElem;
+    return newEl;
   }
-  function insert(parentNode, elem, referenceNode) {
-    // return elem
-    return (parentNode || document.body).insertBefore(elem, referenceNode || null);
+  function insert(el, parentNode, referenceNode) {
+    // return el
+    return (parentNode || document.body).insertBefore(el, referenceNode || null);
   }
-  function insertPrev(target, elem) {
-    return insert(target.parentNode, elem, target);
+  function insertPrev(el, refEl) {
+    return insert(el, refEl.parentNode, refEl);
   }
-  function insertNext(target, elem) {
-    return insert(target.parentNode, elem, target.nextSibling);
+  function insertNext(el, refEl) {
+    return insert(el, refEl.parentNode, refEl.nextSibling);
   }
-  function insertFirst(target, elem) {
-    return insert(target, elem, target.firstChild);
+  function insertFirst(el, refEl) {
+    return insert(el, refEl, refEl.firstChild);
   }
-  function insertLast(target, elem) {
-    return insert(target, elem);
+  function insertLast(el, refEl) {
+    return insert(el, refEl);
   }
-  function wrap(elem, wrapper) {
+  function wrap(el, wrapper) {
     wrapper = wrapper || createElem('div');
-    if (elem.parentNode) elem.parentNode.insertBefore(wrapper, elem);
-    wrapper.appendChild(elem);
+    if (el.parentNode) el.parentNode.insertBefore(wrapper, el);
+    wrapper.appendChild(el);
     return wrapper;
   }
-  function remove(elem, parentNode) {
-    parentNode = parentNode || elem.parentNode;
-    parentNode.removeChild(elem);
+  function remove(el, parentNode) {
+    parentNode = parentNode || el.parentNode;
+    parentNode.removeChild(el);
   }
   function removeChild(parentNode) {
     while (parentNode.firstChild) {
@@ -420,30 +471,30 @@ util.dom = (function () {
     }
   }
 
-  const styleSheetSet = [];
+  const _styleSheetSet = [];
   function addStyleSheet(styles, id) {
     id = id || 'default';
-    if (!styleSheetSet[id]) {
-      styleSheetSet[id] = createElem('style', null, {
+    if (!_styleSheetSet[id]) {
+      _styleSheetSet[id] = createElem('style', null, {
         id: 'x-style-{0}'.format(id),
         type: 'text/css',
       });
-      insert(document.head, styleSheetSet[id]);
+      insert(_styleSheetSet[id], document.head);
     }
-    styleSheetSet[id].innerText += styles;
+    _styleSheetSet[id].innerText += styles;
   }
 
-  function loadTag(tag, onLoadFunc) {
+  function _loadTag(tag, onLoadFunc) {
     if (onLoadFunc) tag.onload = onLoadFunc;
-    insert(document.head, tag);
+    insert(tag, document.head);
   }
   function loadStyleSheet(href, attrs, onLoadFunc) {
     attrs = Object.assign({ href: href, rel: 'stylesheet', type: 'text/css' }, attrs);
-    loadTag(createElem('link', null, attrs), onLoadFunc);
+    _loadTag(createElem('link', null, attrs), onLoadFunc);
   }
   function loadScript(src, attrs, onLoadFunc) {
     attrs = Object.assign({ src: src }, attrs);
-    loadTag(createElem('script', null, attrs), onLoadFunc);
+    _loadTag(createElem('script', null, attrs), onLoadFunc);
   }
 
   function nodeScriptReplace(node) {
@@ -457,29 +508,29 @@ util.dom = (function () {
     return node;
   }
 
-  function getScrollPosition(elem) {
+  function getScrollPosition(el) {
     return {
-      y: elem ? elem.scrollTop : document.documentElement.scrollTop || document.body.scrollTop || 0,
-      x: elem ? elem.scrollLeft : document.documentElement.scrollLeft || document.body.scrollLeft || 0,
+      y: el ? el.scrollTop : document.documentElement.scrollTop || document.body.scrollTop || 0,
+      x: el ? el.scrollLeft : document.documentElement.scrollLeft || document.body.scrollLeft || 0,
     };
   }
-  function setScrollPosition(elem, y, x) {
-    if (elem) {
-      if (y) elem.scrollTop = y;
-      if (x) elem.scrollLeft = x;
+  function setScrollPosition(el, y, x) {
+    if (el) {
+      if (y != null) el.scrollTop = y;
+      if (x != null) el.scrollLeft = x;
     } else {
-      if (y) {
+      if (y != null) {
         document.documentElement.scrollTop = y;
         document.body.scrollTop = y;
       }
-      if (x) {
+      if (x != null) {
         document.documentElement.scrollLeft = y;
         document.body.scrollLeft = y;
       }
     }
   }
-  function getOffset(elem, wrapper) {
-    const rect = elem.getBoundingClientRect();
+  function getOffset(el, wrapper) {
+    const rect = el.getBoundingClientRect();
     const scrollPosition = getScrollPosition(wrapper);
     return {
       top: rect.top + scrollPosition.y,
@@ -487,32 +538,32 @@ util.dom = (function () {
     };
   }
 
-  function regToggleBlock(elem, opts, defaultShow) {
+  function regToggleBlock(el, opts, defaultShow) {
     opts = opts || {};
     opts.ms = opts.ms || 300;
 
-    const showFunc = util.mergeFuncs(opts.showFunc, function () {
-      if (opts.activeClass) elem.classList.add(opts.activeClass);
-      if (opts.hideClass) elem.classList.remove(opts.hideClass);
-    });
-    const hideFunc = util.mergeFuncs(opts.hideFunc, function () {
-      if (opts.activeClass) elem.classList.remove(opts.activeClass);
-      if (opts.hideClass) elem.classList.add(opts.hideClass);
-    });
+    const showFunc = util.mergeFuncs(function () {
+      if (opts.activeClass) el.classList.add(opts.activeClass);
+      if (opts.hideClass) el.classList.remove(opts.hideClass);
+    }, opts.showFunc);
+    const hideFunc = util.mergeFuncs(function () {
+      if (opts.activeClass) el.classList.remove(opts.activeClass);
+      if (opts.hideClass) el.classList.add(opts.hideClass);
+    }, opts.hideFunc);
 
-    if (elem.style.display === 'none') elem.style.display = null;
+    if (el.style.display === 'none') el.style.display = null;
 
     if (!defaultShow) {
-      elem.classList.add('x-hide');
-      if (opts.hideClass) elem.classList.add(opts.hideClass);
+      el.classList.add('x-hide');
+      if (opts.hideClass) el.classList.add(opts.hideClass);
     }
 
     let timer = null;
     return function (show) {
       clearTimeout(timer);
       if (show) {
-        if (elem.classList.contains('x-hide')) {
-          elem.classList.remove('x-hide');
+        if (el.classList.contains('x-hide')) {
+          el.classList.remove('x-hide');
           timer = setTimeout(function () {
             showFunc();
           }, 50);
@@ -524,14 +575,14 @@ util.dom = (function () {
 
         timer = setTimeout(function () {
           timer = null;
-          elem.classList.add('x-hide');
+          el.classList.add('x-hide');
         }, opts.ms);
       }
     };
   }
 
-  function getTransitionStyle(elem) {
-    const _style = window.getComputedStyle(elem, null);
+  function _getTransitionStyle(el) {
+    const _style = window.getComputedStyle(el, null);
     return {
       hasDefault: !_style.transition && _style.transition !== 'all 0s ease 0s',
       property: _style.transitionProperty,
@@ -541,59 +592,59 @@ util.dom = (function () {
     };
   }
 
-  function regToggleFade(elem, opts, defaultShow) {
+  function regToggleFade(el, opts, defaultShow) {
     opts = opts || {};
     opts.ms = opts.ms || 300;
     opts.tf = opts.tf || 'ease';
     opts.hideClass = 'x-hideFade';
 
-    const _t = getTransitionStyle(elem);
+    const _t = _getTransitionStyle(el);
 
     if (_t.hasDefault) {
-      elem.style['transitionProperty'] = _t.property + ',opacity,visibility';
-      elem.style['transitionDuration'] = _t.duration + ',{0}ms,0s'.format(opts.ms);
-      elem.style['transitionTimingFunction'] = _t.tf + ',{0},{0}'.format(opts.tf);
+      el.style['transitionProperty'] = _t.property + ',opacity,visibility';
+      el.style['transitionDuration'] = _t.duration + ',{0}ms,0s'.format(opts.ms);
+      el.style['transitionTimingFunction'] = _t.tf + ',{0},{0}'.format(opts.tf);
     } else {
-      elem.style['transitionProperty'] = 'opacity,visibility';
-      elem.style['transitionDuration'] = '{0}ms,0s'.format(opts.ms);
-      elem.style['transitionTimingFunction'] = '{0},{0}'.format(opts.tf);
+      el.style['transitionProperty'] = 'opacity,visibility';
+      el.style['transitionDuration'] = '{0}ms,0s'.format(opts.ms);
+      el.style['transitionTimingFunction'] = '{0},{0}'.format(opts.tf);
     }
 
-    opts.showFunc = util.mergeFuncs(opts.showFunc, function () {
-      elem.style['transitionDelay'] = _t.hasDefault ? _t.delay + ',0s,0s' : '0s,0s';
-    });
-    opts.hideFunc = util.mergeFuncs(opts.hideFunc, function () {
-      elem.style['transitionDelay'] = (_t.hasDefault ? _t.delay + ',0s,{0}ms' : '0s,{0}ms').format(opts.ms);
-    });
+    opts.showFunc = util.mergeFuncs(function () {
+      el.style['transitionDelay'] = _t.hasDefault ? _t.delay + ',0s,0s' : '0s,0s';
+    }, opts.showFunc);
+    opts.hideFunc = util.mergeFuncs(function () {
+      el.style['transitionDelay'] = (_t.hasDefault ? _t.delay + ',0s,{0}ms' : '0s,{0}ms').format(opts.ms);
+    }, opts.hideFunc);
 
-    return regToggleBlock(elem, opts, defaultShow);
+    return regToggleBlock(el, opts, defaultShow);
   }
 
-  function regToggleHeight(elem, opts, defaultShow) {
+  function regToggleHeight(el, opts, defaultShow) {
     opts = opts || {};
     opts.ms = opts.ms || 300;
     opts.tf = opts.tf || 'ease';
-    elem.classList.add('x-ToggleHeight');
+    el.classList.add('x-ToggleHeight');
 
-    const _t = getTransitionStyle(elem);
+    const _t = _getTransitionStyle(el);
     if (_t.hasDefault) {
-      elem.style['transitionProperty'] = _t.property + ',max-height';
-      elem.style['transitionDuration'] = _t.duration + ',{0}ms,0s'.format(opts.ms);
-      elem.style['transitionTimingFunction'] = _t.tf + ',{0},{0}'.format(opts.tf);
+      el.style['transitionProperty'] = _t.property + ',max-height';
+      el.style['transitionDuration'] = _t.duration + ',{0}ms,0s'.format(opts.ms);
+      el.style['transitionTimingFunction'] = _t.tf + ',{0},{0}'.format(opts.tf);
     } else {
-      elem.style['transitionProperty'] = 'max-height';
-      elem.style['transitionDuration'] = '{0}ms,0s'.format(opts.ms);
-      elem.style['transitionTimingFunction'] = '{0},{0}'.format(opts.tf);
+      el.style['transitionProperty'] = 'max-height';
+      el.style['transitionDuration'] = '{0}ms,0s'.format(opts.ms);
+      el.style['transitionTimingFunction'] = '{0},{0}'.format(opts.tf);
     }
 
-    opts.showFunc = util.mergeFuncs(opts.showFunc, function () {
-      elem.style.maxHeight = elem.scrollHeight + 'px';
-    });
-    opts.hideFunc = util.mergeFuncs(opts.hideFunc, function () {
-      elem.style.maxHeight = null;
-    });
+    opts.showFunc = util.mergeFuncs(function () {
+      el.style.maxHeight = el.scrollHeight + 'px';
+    }, opts.showFunc);
+    opts.hideFunc = util.mergeFuncs(function () {
+      el.style.maxHeight = null;
+    }, opts.hideFunc);
 
-    return regToggleBlock(elem, opts, defaultShow);
+    return regToggleBlock(el, opts, defaultShow);
   }
 
   addStyleSheet(
@@ -630,8 +681,6 @@ util.dom = (function () {
 
 // 圖片相關
 util.img = (function () {
-  const radioClasses = [];
-
   function preload(img) {
     const src = img.getAttribute('data-src');
     if (!src) return;
@@ -654,26 +703,28 @@ util.img = (function () {
     else img.classList.remove('portrait');
   }
 
+  const _radioClasses = [];
   function addRadioStyle(x, y) {
     let className = '';
     const rf = util.math.reduceFraction(x, y);
     const ratio = (rf[1] / rf[0]).toFixed(4) * 100;
     if (!isNaN(ratio)) {
       className = 'x-pic-{0}-{1}'.format(rf[0], rf[1]);
-      if (radioClasses.indexOf(className) === -1) {
-        radioClasses.push(className);
+      if (_radioClasses.indexOf(className) === -1) {
+        _radioClasses.push(className);
         util.dom.addStyleSheet('.{0}::before{content:"";display:block;padding-top:{1}%}'.format(className, ratio));
       }
     }
     return className;
   }
 
-  const imgStyles = [
-    '.x-pic{position:relative;display:block;overflow:hidden}',
-    '.x-pic img{position:absolute;top:-100%;bottom:-100%;right:-100%;left:-100%;margin:auto;width:100%;height:auto}',
-    '.x-pic img.portrait{width:auto;height:100%}',
-  ].join('');
-  util.dom.addStyleSheet(imgStyles);
+  util.dom.addStyleSheet(
+    [
+      '.x-pic{position:relative;display:block;overflow:hidden}',
+      '.x-pic img{position:absolute;top:-100%;bottom:-100%;right:-100%;left:-100%;margin:auto;width:100%;height:auto}',
+      '.x-pic img.portrait{width:auto;height:100%}',
+    ].join('')
+  );
 
   return {
     preload: preload,
@@ -685,39 +736,23 @@ util.img = (function () {
 
 // 處理控制相關
 util.processControl = (function () {
-  const set = {};
+  const _set = {};
 
   function init(name, prop) {
     return new Promise(function (resolve) {
-      if (!set[name]) {
-        set[name] = {
+      if (!_set[name]) {
+        _set[name] = {
           count: 0,
           isProcessing: false,
         };
-        Object.assign(set[name], prop);
+        Object.assign(_set[name], prop);
       }
-      resolve(set[name]);
+      resolve(_set[name]);
     });
   }
 
-  function check(name, prop) {
-    return init(name, prop).then(function (obj) {
-      return {
-        canStart: canStart.bind(null, name),
-        done: done.bind(null, name),
-      };
-    });
-  }
-
-  function checkOnce(name) {
-    const prop = {
-      limit: 1,
-    };
-    return check(name, prop);
-  }
-
-  function canStart(name, callback) {
-    const obj = set[name];
+  function _canStart(name, callback) {
+    const obj = _set[name];
     let pass = !obj.isProcessing;
 
     if (pass && obj.limit) {
@@ -734,9 +769,25 @@ util.processControl = (function () {
     return pass;
   }
 
-  function done(name, callback) {
-    set[name].isProcessing = false;
+  function _done(name, callback) {
+    _set[name].isProcessing = false;
     if (callback) callback();
+  }
+
+  function check(name, prop) {
+    return init(name, prop).then(function (obj) {
+      return {
+        canStart: _canStart.bind(null, name),
+        done: _done.bind(null, name),
+      };
+    });
+  }
+
+  function checkOnce(name) {
+    const prop = {
+      limit: 1,
+    };
+    return check(name, prop);
   }
 
   function leastLoading(ms) {
@@ -756,7 +807,7 @@ util.processControl = (function () {
   }
 
   function showLog() {
-    console.table(set);
+    console.table(_set);
   }
 
   return {
@@ -769,7 +820,7 @@ util.processControl = (function () {
 
 // AJAX
 util.ajax = (function () {
-  const newXHR =
+  const _newXHR =
     window.XMLHttpRequest && (window.location.protocol !== 'file:' || !window.ActiveXObject)
       ? function () {
           return new XMLHttpRequest();
@@ -782,7 +833,7 @@ util.ajax = (function () {
           }
         };
 
-  const forceRefresh = util.bom.getUrlParams('Refresh') === '1';
+  const _forceRefresh = util.bom.getUrlParams('Refresh') === '1';
 
   function _ajax(opts) {
     return new Promise(function (resolve, reject) {
@@ -805,7 +856,7 @@ util.ajax = (function () {
           params = util.convert.obj2QueryString(params);
         }
 
-        if (forceRefresh) {
+        if (_forceRefresh) {
           params += '&Refresh=1';
         }
 
@@ -819,7 +870,7 @@ util.ajax = (function () {
         }
       }
 
-      const xhr = newXHR();
+      const xhr = _newXHR();
       xhr.onload = function () {
         if (this.status >= 200 && this.status < 400) {
           let res;
@@ -833,7 +884,7 @@ util.ajax = (function () {
           resolve({
             status: this.status,
             statusText: this.statusText,
-            data: res.Data || res,
+            data: res.Data !== undefined ? res.Data : res,
           });
         } else {
           reject({
@@ -870,7 +921,7 @@ util.ajax = (function () {
     return promise;
   }
 
-  const httpErrorTemp = {
+  const _httpErrorTemp = {
     '401': function () {
       util.modal.open('loginYet');
     },
@@ -882,7 +933,7 @@ util.ajax = (function () {
   // 錯誤處理
   function errorHandler(customError) {
     return function (err) {
-      const httpError = Object.assign({}, httpErrorTemp, customError);
+      const httpError = Object.assign({}, _httpErrorTemp, customError);
 
       if (httpError[err.status]) {
         httpError[err.status]();
@@ -906,9 +957,9 @@ util.anchor = (function () {
   function getRootEl() {
     return _defaultRoot ? document.documentElement || document.body : _rootEl;
   }
-  function setRootEl(elem) {
-    if (elem) {
-      _rootEl = elem;
+  function setRootEl(el) {
+    if (el) {
+      _rootEl = el;
       _defaultRoot = false;
     } else {
       _rootEl = null;
@@ -917,51 +968,82 @@ util.anchor = (function () {
   }
 
   let _fixedHeader = null;
-  function setFixedHeader(elem) {
-    if (elem) _fixedHeader = elem;
+  function setFixedHeader(el) {
+    if (el) _fixedHeader = el;
   }
 
   let _wrapper = null;
-  function setWrapper(elem) {
-    if (elem) _wrapper = elem;
+  function setWrapper(el) {
+    if (el) _wrapper = el;
   }
 
-  function getElementTop(elem) {
-    if (!elem) return 0;
-    let scrollY = elem.offsetTop; // util.dom.getOffset(elem, _rootEl).top;
-    if (elem.offsetParent) scrollY += elem.offsetParent.offsetTop;
+  function getElementTop(el) {
+    if (!el) return null;
+    let scrollY = el.offsetTop; // util.dom.getOffset(el, _rootEl).top;
+    if (el.offsetParent) scrollY += el.offsetParent.offsetTop;
     if (_fixedHeader) scrollY -= _fixedHeader.offsetHeight;
     if (_wrapper) scrollY -= _wrapper.offsetTop;
     return scrollY;
   }
 
-  // 滾動處理
-  function scrollHandler(elem, duration, callback) {
-    if (!elem) return;
-    const anchor = elem.dataset.anchor || elem.getAttribute('href');
-    scrollTo(anchor, duration, callback);
+  function _getAnchorEl(selector) {
+    if (!selector || selector === '#') return null;
+    if (selector.nodeType === 1) return selector;
+
+    let hash = decodeURI(selector.substr(1));
+    hash = hash.replace(/"/g, '\\"');
+    const alias = '[data-anchor-alias="{0}"]'.format(hash);
+
+    let el = null;
+    try {
+      el = document.querySelector(selector) || document.querySelector(alias);
+    } catch (error) {
+      el = document.querySelector(alias);
+    }
+    return el;
   }
+  function _getAnchorElHash(el) {
+    if (!el) return null;
+    return el.getAttribute('data-anchor-alias') || el.id;
+  }
+
+  function _updateHashControl(hash, force) {
+    util.processControl.check('anchor-updateHashControl').then(function (process) {
+      let run = null;
+      if (force) {
+        util.bom.updateHash(hash);
+        // 阻止區塊滾動覆蓋UrlHash
+        run = util.processControl.leastLoading(200)(process.done);
+      } else {
+        run = function () {
+          util.bom.updateHash(hash);
+          process.done();
+        };
+      }
+      process.canStart(run);
+    });
+  }
+
   // 滾動至
   function scrollTo(selector, duration, callback) {
-    if (!selector) return;
-
-    const targetAnchor = document.querySelector(selector);
+    const targetAnchor = _getAnchorEl(selector);
     if (!targetAnchor) return;
 
-    callback = util.mergeFuncs(callback, function () {
-      util.bom.updateHash(targetAnchor.id);
-    });
+    callback = util.mergeFuncs(function () {
+      _updateHashControl(_getAnchorElHash(targetAnchor), true);
+    }, callback);
     _scrollTo(getElementTop(targetAnchor), duration, callback);
   }
   // 置頂
   function scrollTop(duration, callback) {
-    callback = util.mergeFuncs(callback, function () {
-      util.bom.updateHash();
-    });
+    callback = util.mergeFuncs(function () {
+      _updateHashControl(null, true);
+    }, callback);
     _scrollTo(0, duration, callback);
   }
   // 滾動至 (rootEl, 位置, 持續時間, 回呼函式)
   function _scrollTo(to, duration, callback) {
+    if (to == null) return;
     const rootEl = _rootEl;
     const start = util.dom.getScrollPosition(rootEl).y;
     const change = to - start;
@@ -1001,20 +1083,43 @@ util.anchor = (function () {
     util.forEach(anchorLinks, function (link) {
       link.addEventListener('click', function (e) {
         e.preventDefault();
-        scrollHandler(e.target, duration, callback);
+        const anchorID = e.target.getAttribute('data-anchor') || e.target.getAttribute('href');
+        scrollTo(anchorID, duration, callback);
       });
     });
   }
 
   // 區塊錨點
-  const sections = [];
-  let sectionsScrollHandler = null;
+  const _sections = [];
   function setSections(id) {
-    if (!!id && sections.indexOf(id) === -1) sections.push(id);
+    if (!!id && _sections.indexOf(id) === -1) _sections.push(id);
   }
-  // TODO: 設定初始數據
-  function setSectionsData(elem) {
-    setSections(elem.id);
+  function setSectionsData(el) {
+    // TODO: 設定初始數據
+    setSections(el.id);
+  }
+  let _sectionsScrollHandler = null;
+  function _scrollHashHandler(e) {
+    const rootTop = util.dom.getScrollPosition(_rootEl).y;
+    const rootEl = getRootEl();
+    const rootBottom = rootTop + rootEl.offsetHeight;
+    let targetHash = null;
+
+    // TODO: 可優化 記錄順序等...
+    for (let i = 0, sectionID; (sectionID = _sections[i]); i++) {
+      const el = document.getElementById(sectionID);
+      if (el) {
+        const elTop = getElementTop(el);
+        const elBottom = elTop + el.offsetHeight;
+
+        // TODO: 顯示條件可優化
+        if (elTop < rootBottom && elBottom > rootTop) {
+          targetHash = _getAnchorElHash(el);
+          break;
+        }
+      }
+    }
+    _updateHashControl(targetHash);
   }
   // 處理錨點區塊
   function processSections(sectionEls) {
@@ -1024,29 +1129,10 @@ util.anchor = (function () {
         setSectionsData(sectionEl);
       });
 
-      if (!sectionsScrollHandler) {
+      if (!_sectionsScrollHandler) {
         // 區塊錨點處理
-        sectionsScrollHandler = util.throttle(function scrollHashHandler() {
-          const rootTop = util.dom.getScrollPosition(_rootEl).y;
-          const rootEl = getRootEl();
-          const rootBottom = rootTop + rootEl.offsetHeight;
-          let targetHash = null;
-
-          // TODO: 可優化 記錄順序等...
-          for (let i = 0, sectionID; (sectionID = sections[i]); i++) {
-            const elem = document.getElementById(sectionID);
-            const elemTop = getElementTop(elem);
-            const elemBottom = elemTop + elem.offsetHeight;
-
-            // TODO: 顯示條件可優化
-            if (elemTop < rootBottom && elemBottom > rootTop) {
-              targetHash = sectionID;
-              break;
-            }
-          }
-          util.bom.updateHash(targetHash);
-        });
-        (_defaultRoot ? document : _rootEl).addEventListener('scroll', sectionsScrollHandler);
+        _sectionsScrollHandler = util.throttle(_scrollHashHandler);
+        (_defaultRoot ? document : _rootEl).addEventListener('scroll', _sectionsScrollHandler);
       }
     }
   }
@@ -1056,8 +1142,8 @@ util.anchor = (function () {
   if (window.location.hash) {
     _defaultHash = window.location.hash;
     util.domReady(function () {
-      util.bom.updateHash();
-      _scrollTo(0, 0);
+      // util.bom.updateHash();
+      // _scrollTo(0, 0);
       untilDefault(0);
     });
   }
@@ -1068,15 +1154,16 @@ util.anchor = (function () {
       // 每次最少執行秒數
       const leastLoading = util.processControl.leastLoading(100);
       // 錨點目標
-      const anchorTarget = document.querySelector(_defaultHash);
+      const anchorTarget = _getAnchorEl(_defaultHash);
+      let anchorTargetTop = getElementTop(anchorTarget);
       // 直到錨點函式
       const untilFunc = leastLoading.bind(null, function () {
         let next = null;
-        const anchorTargetTop = getElementTop(anchorTarget);
+        anchorTargetTop = getElementTop(anchorTarget);
         const scrollY = util.dom.getScrollPosition(_rootEl).y;
 
         // 如果錨點還沒生成 或還沒定位 (定位則停止，容忍誤差)
-        if (!anchorTarget || util.pipe(Math.abs, Math.floor)(anchorTargetTop - scrollY) > 0) {
+        if (anchorTargetTop == null || util.pipe(Math.abs, Math.floor)(anchorTargetTop - scrollY) > 0) {
           // 再延遲執行一次
           next = function () {
             setTimeout(function () {
@@ -1089,10 +1176,10 @@ util.anchor = (function () {
       });
 
       // 目標不存在 或 目標無法置頂
-      if (!anchorTarget || anchorTarget.offsetTop > getRootEl().scrollHeight - window.innerHeight) {
+      if (anchorTargetTop === null || anchorTargetTop > getRootEl().scrollHeight - window.innerHeight) {
         untilFunc();
       } else {
-        _scrollTo(getElementTop(anchorTarget), duration, untilFunc);
+        scrollTo(anchorTarget, duration, untilFunc);
       }
     });
   }
@@ -1103,7 +1190,6 @@ util.anchor = (function () {
     setFixedHeader: setFixedHeader,
     setWrapper: setWrapper,
     getElementTop: getElementTop,
-    scrollHandler: scrollHandler,
     scrollTo: scrollTo,
     scrollTop: scrollTop,
     processLinks: processLinks,
@@ -1136,86 +1222,84 @@ util.modal = (function () {
     this.clickEventHandler = this.clickEventHandler.bind(this);
     this.create(parentNode);
   }
-  Modal.prototype = {
-    init: function () {
-      this.target = null; // 目標容器(背景)
-      this.block = null; // 區塊(框)
-      this.mainContent = null; // 顯示內容
-      this.closeBtn = null; // 關閉按鈕
-      this.switchFunc = null; // 切換顯示
-      this.onClose = null; // 關閉時的回呼函式
-      this.onConfirm = null; // 確認時的回呼函式
-      this.onCancel = null; // 取消時的回呼函式
-    },
-    destroy: function () {
-      if (this.target) {
-        this.target.removeEventListener('click', this.clickEventHandler);
-        util.dom.remove(this.target);
-        this.init();
-      }
-    },
-    create: function (parentNode) {
-      if (!this.target) {
-        this.init();
-        // 目標容器(背景)
-        this.target = util.dom.createElem('div', null, { className: modalClasses.backdrop });
-        // 區塊(框)
-        this.block = util.dom.createElem('div', null, { className: modalClasses.block });
-        // 顯示內容
-        this.mainContent = util.dom.createElem('div', null, { className: modalClasses.content });
-        // 關閉按鈕
-        this.closeBtn = util.dom.createElem('div', '&times;', { className: modalClasses.closeBtn });
-        // 組合模態框
-        util.dom.insert(this.block, this.mainContent);
-        util.dom.insert(this.block, this.closeBtn);
-        util.dom.insert(this.target, this.block);
-        util.dom.insert(parentNode, this.target);
+  Modal.prototype.init = function () {
+    this.target = null; // 目標容器(背景)
+    this.block = null; // 區塊(框)
+    this.mainContent = null; // 顯示內容
+    this.closeBtn = null; // 關閉按鈕
+    this.switchFunc = null; // 切換顯示
+    this.onClose = null; // 關閉時的回呼函式
+    this.onConfirm = null; // 確認時的回呼函式
+    this.onCancel = null; // 取消時的回呼函式
+  };
+  Modal.prototype.destroy = function () {
+    if (this.target) {
+      this.target.removeEventListener('click', this.clickEventHandler);
+      util.dom.remove(this.target);
+      this.init();
+    }
+  };
+  Modal.prototype.create = function (parentNode) {
+    if (!this.target) {
+      this.init();
+      // 目標容器(背景)
+      this.target = util.dom.createElem('div', null, { class: modalClasses.backdrop });
+      // 區塊(框)
+      this.block = util.dom.createElem('div', null, { class: modalClasses.block });
+      // 顯示內容
+      this.mainContent = util.dom.createElem('div', null, { class: modalClasses.content });
+      // 關閉按鈕
+      this.closeBtn = util.dom.createElem('div', '&times;', { class: modalClasses.closeBtn });
+      // 組合模態框
+      util.dom.insert(this.mainContent, this.block);
+      util.dom.insert(this.closeBtn, this.block);
+      util.dom.insert(this.block, this.target);
+      util.dom.insert(this.target, parentNode);
 
-        // 註冊切換顯示
-        this.switchFunc = util.dom.regToggleFade(this.target, { activeClass: modalClasses.backdrop_active }, false);
-        // 註冊監聽
-        this.target.addEventListener('click', this.clickEventHandler);
-      }
-    },
-    initContent: function (html) {
-      util.dom.removeChild(this.mainContent);
-      this.mainContent.innerHTML = html;
-    },
-    clickEventHandler: function (e) {
-      e.stopPropagation();
-      const targetEl = e.target;
-      const classList = targetEl.classList;
-      // 關閉
-      if (classList.contains(modalClasses.closeBtn) || classList.contains(modalClasses.backdrop)) {
-        this.close();
-      }
-      // 確認
-      else if (classList.contains(modalClasses.btn_confirm)) {
-        if (this.onConfirm) this.onConfirm();
-        this.close();
-      }
-      // 取消
-      else if (classList.contains(modalClasses.btn_cancel)) {
-        if (this.onCancel) this.onCancel();
-        this.close();
-      }
-    },
-    close: function () {
-      if (this.switchFunc) this.switchFunc(false);
-      if (this.onClose) this.onClose();
-    },
-    open: function () {
-      if (this.switchFunc) this.switchFunc(true);
-    },
-    addCloseHandler: function (func) {
-      this.onClose = util.mergeFuncs(this.onClose, func);
-    },
-    addConfirmHandler: function (func) {
-      this.onConfirm = util.mergeFuncs(this.onConfirm, func);
-    },
-    addCancelHandler: function (func) {
-      this.onCancel = util.mergeFuncs(this.onCancel, func);
-    },
+      // 註冊切換顯示
+      this.switchFunc = util.dom.regToggleFade(this.target, { activeClass: modalClasses.backdrop_active }, false);
+      // 註冊監聽
+      this.target.addEventListener('click', this.clickEventHandler);
+    }
+  };
+  Modal.prototype.initContent = function (html) {
+    util.dom.removeChild(this.mainContent);
+    this.mainContent.innerHTML = html;
+  };
+  Modal.prototype.clickEventHandler = function (e) {
+    e.stopPropagation();
+    const targetEl = e.target;
+    const classList = targetEl.classList;
+    // 關閉
+    if (classList.contains(modalClasses.closeBtn) || classList.contains(modalClasses.backdrop)) {
+      this.close();
+    }
+    // 確認
+    else if (classList.contains(modalClasses.btn_confirm)) {
+      if (this.onConfirm) this.onConfirm();
+      this.close();
+    }
+    // 取消
+    else if (classList.contains(modalClasses.btn_cancel)) {
+      if (this.onCancel) this.onCancel();
+      this.close();
+    }
+  };
+  Modal.prototype.close = function () {
+    if (this.switchFunc) this.switchFunc(false);
+    if (this.onClose) this.onClose();
+  };
+  Modal.prototype.open = function () {
+    if (this.switchFunc) this.switchFunc(true);
+  };
+  Modal.prototype.addCloseHandler = function (fn) {
+    this.onClose = util.mergeFuncs(this.onClose, fn);
+  };
+  Modal.prototype.addConfirmHandler = function (fn) {
+    this.onConfirm = util.mergeFuncs(this.onConfirm, fn);
+  };
+  Modal.prototype.addCancelHandler = function (fn) {
+    this.onCancel = util.mergeFuncs(this.onCancel, fn);
   };
 
   // 內容模板
@@ -1241,8 +1325,8 @@ util.modal = (function () {
   function close(name) {
     if (set[name]) set[name].close();
   }
-  function addCloseHandler(name, func) {
-    if (set[name]) set[name].addCloseHandler(func);
+  function addCloseHandler(name, fn) {
+    if (set[name]) set[name].addCloseHandler(fn);
   }
 
   // 模態框類型
@@ -1278,16 +1362,16 @@ util.modal = (function () {
             if (opts.confirmFunc) modal.addConfirmHandler(opts.confirmFunc);
             if (opts.cancelFunc) modal.addCloseHandler(opts.cancelFunc);
 
-            const footer = util.dom.createElem('div', null, { className: modalClasses.contentFooter });
+            const footer = util.dom.createElem('div', null, { class: modalClasses.contentFooter });
             const confirmBtn = util.dom.createElem('div', opts.confirmText || '確認', {
-              className: '{0} {1}'.format(modalClasses.btn, modalClasses.btn_confirm),
+              class: '{0} {1}'.format(modalClasses.btn, modalClasses.btn_confirm),
             });
             const cancelBtn = util.dom.createElem('div', opts.cancelText || '取消', {
-              className: '{0} {1}'.format(modalClasses.btn, modalClasses.btn_cancel),
+              class: '{0} {1}'.format(modalClasses.btn, modalClasses.btn_cancel),
             });
-            util.dom.insert(footer, confirmBtn);
-            util.dom.insert(footer, cancelBtn);
-            util.dom.insert(modal.mainContent, footer);
+            util.dom.insert(confirmBtn, footer);
+            util.dom.insert(cancelBtn, footer);
+            util.dom.insert(footer, modal.mainContent);
             break;
 
           case TYPE.ALERT:
@@ -1300,7 +1384,7 @@ util.modal = (function () {
     });
   }
 
-  function createThenOpen(type, name, title, msg) {
+  function _createThenOpen(type, name, title, msg) {
     const opts = { type: type, name: name, title: title, msg: msg };
     return create(opts).then(function (modal) {
       modal.open();
@@ -1353,8 +1437,8 @@ util.modal = (function () {
     addCloseHandler: addCloseHandler,
     fetch: fetch,
     create: create,
-    openAlert: createThenOpen.bind(null, TYPE.ALERT),
-    openError: createThenOpen.bind(null, TYPE.ERROR),
-    openConfirm: createThenOpen.bind(null, TYPE.CONFIRM),
+    openAlert: _createThenOpen.bind(null, TYPE.ALERT),
+    openError: _createThenOpen.bind(null, TYPE.ERROR),
+    openConfirm: _createThenOpen.bind(null, TYPE.CONFIRM),
   };
 })();

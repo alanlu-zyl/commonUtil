@@ -104,12 +104,11 @@ body {
 .snippet {
   max-width: 125rem;
   border-radius: 5px;
-  padding: 1rem;
+  padding: 0.5em;
   background-color: #b7b7b7;
 }
 .snippet pre {
   display: block;
-  padding: 1rem;
   background-color: #f0f0f0;
   overflow: hidden;
 }
@@ -126,6 +125,12 @@ body {
   white-space: pre;
   border: none;
   outline: none;
+}
+.snippet .btn {
+  margin: 0;
+}
+.snippet .btn:not(:last-child) {
+  margin-right: 1rem;
 }
 #app {
   display: flex;
@@ -185,9 +190,12 @@ body {
   visibility: hidden;
 }
 section {
-  margin: 5rem auto;
+  margin: 0 auto;
   padding: 1rem;
 }
 section h3 {
   margin-top: 1rem;
+}
+section:not(:first-child) {
+  margin-bottom: 5rem;
 }
