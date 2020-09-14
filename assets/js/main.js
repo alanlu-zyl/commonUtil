@@ -97,7 +97,7 @@ const processContent = function () {
   const navList = document.getElementById('navList'); // 導覽列區塊 (tag: ul)
 
   // 取得內容資訊
-  util.ajax.get('/assets/data/content.json').then(function (res) {
+  util.ajax.get('https://zhongyoulu.github.io/commonUtil/assets/data/content.json').then(function (res) {
     // 處理內容資訊
     util.forEach(res.data, function (nav) {
       // 第一層
